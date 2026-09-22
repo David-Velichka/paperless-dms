@@ -46,6 +46,9 @@ class DocumentServiceTest {
                 .build();
     }
 
+    // GIVEN a valid document ID
+    // WHEN findById is called
+    // THEN return mapped DocumentModel
     @Test
     void findById_WhenExists_ReturnsDocumentModel() {
         when(documentRepository.findById(1L)).thenReturn(Optional.of(sampleEntity));
@@ -59,11 +62,61 @@ class DocumentServiceTest {
         verify(documentRepository, times(1)).findById(1L);
     }
 
+    // GIVEN a non-existent document ID
+    // WHEN findById is called
+    // THEN throw BusinessLayerException
     @Test
     void findById_WhenNotFound_ThrowsBusinessLayerException() {
         when(documentRepository.findById(99L)).thenReturn(Optional.empty());
 
         assertThrows(BusinessLayerException.class, () -> documentService.findById(99L));
         verify(documentRepository, times(1)).findById(99L);
+    }
+
+    // GIVEN a DocumentModel and raw file bytes
+    // WHEN uploadDocument is invoked
+    // THEN persist entity via repository and return mapped model with assigned ID
+    @Test
+    void uploadDocument_SavesEntityAndReturnsModel() {
+        DocumentModel inputModel = DocumentModel.builder()
+                .title("Upload Test")
+                .originalFilename("test.pdf")
+                .contentType("application/pdf")
+                .fileSize(100L)
+                .build();
+
+        DocumentEntity entityToSave = DocumentEntity.builder()
+                .title("Upload Test")
+                .originalFilename("test.pdf")
+                .contentType("application/pdf")
+                .fileSize(100L)
+                .build();
+
+        DocumentEntity savedEntity = DocumentEntity.builder()
+                .id(10L)
+                .title("Upload Test")
+                .originalFilename("test.pdf")
+                .contentType("application/pdf")
+                .fileSize(100L)
+                .build();
+
+        DocumentModel expectedModel = DocumentModel.builder()
+                .id(10L)
+                .title("Upload Test")
+                .originalFilename("test.pdf")
+                .contentType("application/pdf")
+                .fileSize(100L)
+                .build();
+
+        when(documentMapper.toEntity(inputModel)).thenReturn(entityToSave);
+        when(documentRepository.save(entityToSave)).thenReturn(savedEntity);
+        when(documentMapper.toModel(savedEntity)).thenReturn(expectedModel);
+
+        DocumentModel result = documentService.uploadDocument(inputModel, "dummy content".getBytes());
+
+        assertNotNull(result);
+        assertEquals(10L, result.getId());
+        assertEquals("Upload Test", result.getTitle());
+        verify(documentRepository, times(1)).save(entityToSave);
     }
 }

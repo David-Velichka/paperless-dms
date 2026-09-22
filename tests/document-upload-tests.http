@@ -1,0 +1,59 @@
+### Paperless DMS - REST API Tests (Sprint 1: Document Upload)
+@baseUrl = http://localhost:8081/api
+
+### 1. Retrieve all documents (initial list)
+GET {{baseUrl}}/documents
+Accept: application/json
+
+### 2. Upload Document with explicit title (First Use Case)
+POST {{baseUrl}}/documents/upload
+Content-Type: multipart/form-data; boundary=WebAppBoundary
+
+--WebAppBoundary
+Content-Disposition: form-data; name="title"
+
+Annual Tax Report 2026
+--WebAppBoundary
+Content-Disposition: form-data; name="file"; filename="sample.pdf"
+Content-Type: application/pdf
+
+< ./sample-documents/sample.pdf
+--WebAppBoundary--
+
+### 3. Upload Document without title (defaults to filename)
+POST {{baseUrl}}/documents/upload
+Content-Type: multipart/form-data; boundary=WebAppBoundary
+
+--WebAppBoundary
+Content-Disposition: form-data; name="file"; filename="sample.txt"
+Content-Type: text/plain
+
+< ./sample-documents/sample.txt
+--WebAppBoundary--
+
+### 4. Upload Document error handling (Empty file should return 400 Bad Request)
+POST {{baseUrl}}/documents/upload
+Content-Type: multipart/form-data; boundary=WebAppBoundary
+
+--WebAppBoundary
+Content-Disposition: form-data; name="title"
+
+Empty Test
+--WebAppBoundary
+Content-Disposition: form-data; name="file"; filename="empty.pdf"
+Content-Type: application/pdf
+
+
+--WebAppBoundary--
+
+### 5. Retrieve all documents (verify uploaded documents appear)
+GET {{baseUrl}}/documents
+Accept: application/json
+
+### 6. Retrieve uploaded document by ID
+GET {{baseUrl}}/documents/1
+Accept: application/json
+
+### 7. Search for uploaded document by title query
+GET {{baseUrl}}/documents/search?query=Tax
+Accept: application/json

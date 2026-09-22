@@ -14,5 +14,5 @@ public interface DocumentService {
     List<DocumentModel> findAll();
     List<DocumentModel> search(String query);
     void deleteById(Long id);
-    void uploadDocument(DocumentModel documentModel, byte[] content);
+    DocumentModel uploadDocument(DocumentModel documentModel, byte[] content);
 }

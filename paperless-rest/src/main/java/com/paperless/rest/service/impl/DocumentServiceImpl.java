@@ -64,15 +64,16 @@ public class DocumentServiceImpl implements DocumentService {
     }
 
     @Override
-    public void uploadDocument(DocumentModel documentModel, byte[] content) {
+    public DocumentModel uploadDocument(DocumentModel documentModel, byte[] content) {
         log.info("Processing upload for document: {}", documentModel.getTitle());
         // Business logic workflow:
         // 1. Persist initial document metadata via repository
         DocumentEntity entity = documentMapper.toEntity(documentModel);
         DocumentEntity saved = documentRepository.save(entity);
-        documentModel.setId(saved.getId());
+        DocumentModel savedModel = documentMapper.toModel(saved);
 
         // 2. Storage & Asynchronous message queue dispatch will be invoked here (Sprint 3/4)
         log.info("Document successfully initiated with id: {}", saved.getId());
+        return savedModel;
     }
 }

@@ -55,19 +55,28 @@ public class DocumentController {
 
     @PostMapping(value = "/upload", consumes = "multipart/form-data")
     public ResponseEntity<DocumentDto> uploadDocument(
-            @RequestParam("title") String title,
-            @RequestParam("file") MultipartFile file) throws IOException {
-        log.info("REST request to upload document: {} (filename: {})", title, file.getOriginalFilename());
+            @RequestParam("file") MultipartFile file,
+            @RequestParam(value = "title", required = false) String title) throws IOException {
+        if (file == null || file.isEmpty()) {
+            log.warn("Document upload rejected: provided file is empty or missing");
+            return ResponseEntity.badRequest().build();
+        }
+
+        String documentTitle = (title != null && !title.isBlank())
+                ? title
+                : (file.getOriginalFilename() != null ? file.getOriginalFilename() : "document");
+
+        log.info("REST request to upload document: {} (filename: {})", documentTitle, file.getOriginalFilename());
 
         DocumentModel model = DocumentModel.builder()
-                .title(title)
+                .title(documentTitle)
                 .originalFilename(file.getOriginalFilename())
                 .contentType(file.getContentType())
                 .fileSize(file.getSize())
                 .build();
 
-        documentService.uploadDocument(model, file.getBytes());
-        return ResponseEntity.status(HttpStatus.CREATED).body(documentMapper.toDto(model));
+        DocumentModel saved = documentService.uploadDocument(model, file.getBytes());
+        return ResponseEntity.status(HttpStatus.CREATED).body(documentMapper.toDto(saved));
     }
 
     @DeleteMapping("/{id}")

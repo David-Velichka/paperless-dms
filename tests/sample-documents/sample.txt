@@ -1,0 +1,3 @@
+Paperless DMS Sample Text Document for Sprint 1 testing.
+Invoice Number: INV-2026-001
+Total Amount: EUR 1250.00
