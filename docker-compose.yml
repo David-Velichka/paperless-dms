@@ -1,0 +1,37 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: paperless-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: paperless
+      POSTGRES_USER: paperless_user
+      POSTGRES_PASSWORD: paperless_secure_pass
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U paperless_user -d paperless"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  paperless-rest:
+    build:
+      context: ./paperless-rest
+      dockerfile: Dockerfile
+    container_name: paperless-rest
+    restart: unless-stopped
+    ports:
+      - "8081:8081"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/paperless
+      SPRING_DATASOURCE_USERNAME: paperless_user
+      SPRING_DATASOURCE_PASSWORD: paperless_secure_pass
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  postgres_data:

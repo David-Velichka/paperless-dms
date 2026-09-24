@@ -29,9 +29,9 @@ class DocumentControllerTest {
     @MockitoBean
     private DocumentMapper documentMapper;
 
-    // GIVEN a request to retrieve all documents
-    // WHEN GET /api/documents is invoked
-    // THEN return status 200 OK and JSON array of documents
+    // GIVEN eine Anfrage zum Abrufen aller Dokumente
+    // WHEN der Endpunkt GET /api/documents aufgerufen wird
+    // THEN wird der HTTP-Status 200 OK und ein JSON-Array der Dokumente zurückgegeben
     @Test
     void getAllDocuments_ReturnsOkAndJsonArray() throws Exception {
         DocumentModel model = DocumentModel.builder().id(1L).title("Sample").build();
@@ -45,9 +45,9 @@ class DocumentControllerTest {
                 .andExpect(jsonPath("$[0].title").value("Sample"));
     }
 
-    // GIVEN a valid PDF file upload with a custom title
-    // WHEN POST /api/documents/upload is invoked with multipart form data
-    // THEN return status 201 Created and the created DocumentDto
+    // GIVEN eine gültige PDF-Datei und ein optionaler Titel
+    // WHEN POST /api/documents/upload mit Multipart-Formulardaten aufgerufen wird
+    // THEN wird der HTTP-Status 201 Created und das erstellte DocumentDto zurückgegeben
     @Test
     void uploadDocument_WithValidFile_ReturnsCreated() throws Exception {
         org.springframework.mock.web.MockMultipartFile file = new org.springframework.mock.web.MockMultipartFile(
@@ -82,9 +82,9 @@ class DocumentControllerTest {
                 .andExpect(jsonPath("$.originalFilename").value("sample.pdf"));
     }
 
-    // GIVEN an empty file upload request
-    // WHEN POST /api/documents/upload is invoked
-    // THEN return status 400 Bad Request
+    // GIVEN eine leere Datei im Upload-Request
+    // WHEN POST /api/documents/upload aufgerufen wird
+    // THEN wird der HTTP-Status 400 Bad Request zurückgegeben
     @Test
     void uploadDocument_WithEmptyFile_ReturnsBadRequest() throws Exception {
         org.springframework.mock.web.MockMultipartFile emptyFile = new org.springframework.mock.web.MockMultipartFile(

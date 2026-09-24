@@ -6,8 +6,11 @@ import org.springframework.boot.test.context.SpringBootTest;
 @SpringBootTest
 class PaperlessRestApplicationTests {
 
-	@Test
-	void contextLoads() {
-	}
+    // GIVEN ein vollständig konfigurierter Spring Boot Anwendungskontext
+    // WHEN der Anwendungskontext geladen wird
+    // THEN lädt die Anwendung erfolgreich ohne Fehler
+    @Test
+    void contextLoads() {
+    }
 
 }

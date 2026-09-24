@@ -53,6 +53,7 @@ public class DocumentController {
         return ResponseEntity.status(HttpStatus.CREATED).body(documentMapper.toDto(saved));
     }
 
+    // Multipart post
     @PostMapping(value = "/upload", consumes = "multipart/form-data")
     public ResponseEntity<DocumentDto> uploadDocument(
             @RequestParam("file") MultipartFile file,
