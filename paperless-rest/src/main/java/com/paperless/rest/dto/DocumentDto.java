@@ -1,5 +1,6 @@
 package com.paperless.rest.dto;
 
+import com.paperless.rest.service.model.DocumentStatus;
 import jakarta.validation.constraints.NotBlank;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -25,7 +26,7 @@ public class DocumentDto {
     private String storagePath;
     private String ocrText;
     private String summary;
+    private DocumentStatus currentStatus;
     private OffsetDateTime createdAt;
     private OffsetDateTime modifiedAt;
-    private List<String> tags;
 }

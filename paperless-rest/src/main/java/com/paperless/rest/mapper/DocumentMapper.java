@@ -22,8 +22,6 @@ public interface DocumentMapper {
 
     // BL Model <-> DAL Entity
     DocumentEntity toEntity(DocumentModel model);
-
-    @Mapping(target = "tags", ignore = true)
     DocumentModel toModel(DocumentEntity entity);
 
     List<DocumentModel> toModelList(List<DocumentEntity> entities);

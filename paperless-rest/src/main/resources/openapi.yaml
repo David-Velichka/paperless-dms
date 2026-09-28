@@ -126,38 +126,86 @@ paths:
                 items:
                   $ref: '#/components/schemas/DocumentDto'
 
-  /api/custom-entities:
+  /api/documents/{id}/history:
     get:
-      summary: Retrieve all custom entities (individual use case)
-      operationId: getAllCustomEntities
+      summary: Retrieve status transition history for a document
+      operationId: getDocumentStatusHistory
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
       responses:
         '200':
-          description: List of custom entities
+          description: Chronological list of status transitions
           content:
             application/json:
               schema:
                 type: array
                 items:
-                  $ref: '#/components/schemas/CustomEntityDto'
+                  $ref: '#/components/schemas/DocumentStatusHistoryDto'
+
+  /api/documents/{id}/status:
     post:
-      summary: Create custom entity
-      operationId: createCustomEntity
+      summary: Transition document status
+      operationId: changeDocumentStatus
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/CustomEntityDto'
+              $ref: '#/components/schemas/DocumentStatusChangeRequestDto'
       responses:
         '201':
-          description: Custom entity created
+          description: Status transition recorded
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/CustomEntityDto'
+                $ref: '#/components/schemas/DocumentStatusHistoryDto'
+        '400':
+          description: Invalid transition or validation error
+
+  /api/documents/status-history/{id}:
+    get:
+      summary: Retrieve single status history entry by ID
+      operationId: getStatusHistoryById
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: Status history record
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocumentStatusHistoryDto'
+        '404':
+          description: History entry not found
 
 components:
   schemas:
+    DocumentStatus:
+      type: string
+      enum:
+        - RECEIVED
+        - PROCESSING
+        - REVIEW_PENDING
+        - COMPLETED
+        - REJECTED
+
     DocumentDto:
       type: object
       required:
@@ -181,6 +229,8 @@ components:
           type: string
         summary:
           type: string
+        currentStatus:
+          $ref: '#/components/schemas/DocumentStatus'
         createdAt:
           type: string
           format: date-time
@@ -188,21 +238,36 @@ components:
           type: string
           format: date-time
 
-    CustomEntityDto:
+    DocumentStatusHistoryDto:
       type: object
-      required:
-        - name
       properties:
         id:
           type: integer
           format: int64
-        name:
-          type: string
-        description:
-          type: string
         documentId:
           type: integer
           format: int64
-        createdAt:
+        status:
+          $ref: '#/components/schemas/DocumentStatus'
+        previousStatus:
+          $ref: '#/components/schemas/DocumentStatus'
+        changedBy:
+          type: string
+        timestamp:
           type: string
           format: date-time
+        comment:
+          type: string
+
+    DocumentStatusChangeRequestDto:
+      type: object
+      required:
+        - status
+        - changedBy
+      properties:
+        status:
+          $ref: '#/components/schemas/DocumentStatus'
+        changedBy:
+          type: string
+        comment:
+          type: string

@@ -8,16 +8,18 @@ import lombok.NoArgsConstructor;
 import java.time.OffsetDateTime;
 
 /**
- * Pure Business Layer (BL) Domain Model for custom use case.
+ * Pure Business Layer Domain Model for document status history audit log.
  */
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class CustomEntityModel {
+public class DocumentStatusHistoryModel {
     private Long id;
-    private String name;
-    private String description;
     private Long documentId;
-    private OffsetDateTime createdAt;
+    private DocumentStatus status;
+    private DocumentStatus previousStatus;
+    private String changedBy;
+    private OffsetDateTime timestamp;
+    private String comment;
 }

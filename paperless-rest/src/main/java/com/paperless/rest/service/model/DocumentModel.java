@@ -25,7 +25,27 @@ public class DocumentModel {
     private String storagePath;
     private String ocrText;
     private String summary;
+    private DocumentStatus currentStatus;
     private OffsetDateTime createdAt;
     private OffsetDateTime modifiedAt;
-    private List<String> tags;
+
+    /**
+     * Enforces domain invariant for status transitions (Aggregate Root self-management).
+     *
+     * @param targetStatus the desired target lifecycle state
+     * @throws com.paperless.rest.exception.BusinessLayerException if the transition is prohibited
+     */
+    public void transitionTo(DocumentStatus targetStatus) {
+        if (targetStatus == null) {
+            throw new com.paperless.rest.exception.BusinessLayerException("Target status must not be null");
+        }
+        if (this.currentStatus == null) {
+            this.currentStatus = DocumentStatus.RECEIVED;
+        }
+        if (!this.currentStatus.canTransitionTo(targetStatus)) {
+            throw new com.paperless.rest.exception.BusinessLayerException(
+                    "Illegal status transition from " + this.currentStatus + " to " + targetStatus);
+        }
+        this.currentStatus = targetStatus;
+    }
 }

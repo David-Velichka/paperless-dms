@@ -1,0 +1,73 @@
+### Paperless DMS - REST API Tests (Class 4: Custom Use-Case - Document Status & History)
+@baseUrl = http://localhost:8081/api
+
+### 1. Upload a document to start lifecycle (Initial status will be RECEIVED)
+POST {{baseUrl}}/documents/upload
+Content-Type: multipart/form-data; boundary=WebAppBoundary
+
+--WebAppBoundary
+Content-Disposition: form-data; name="title"
+
+Invoice for Status Tracking
+--WebAppBoundary
+Content-Disposition: form-data; name="file"; filename="sample.pdf"
+Content-Type: application/pdf
+
+< ./sample-documents/sample.pdf
+--WebAppBoundary--
+
+### 2. Retrieve Document to verify initial status (RECEIVED)
+GET {{baseUrl}}/documents/1
+Accept: application/json
+
+### 3. Retrieve Status History for the Document (should contain initial upload entry)
+GET {{baseUrl}}/documents/1/history
+Accept: application/json
+
+### 4. Transition Document Status: RECEIVED -> PROCESSING
+POST {{baseUrl}}/documents/1/status
+Content-Type: application/json
+
+{
+  "status": "PROCESSING",
+  "changedBy": "ocr-worker",
+  "comment": "Starting OCR text extraction"
+}
+
+### 5. Transition Document Status: PROCESSING -> REVIEW_PENDING
+POST {{baseUrl}}/documents/1/status
+Content-Type: application/json
+
+{
+  "status": "REVIEW_PENDING",
+  "changedBy": "ocr-worker",
+  "comment": "OCR extraction completed, pending user review"
+}
+
+### 6. Transition Document Status: REVIEW_PENDING -> COMPLETED (Approved)
+POST {{baseUrl}}/documents/1/status
+Content-Type: application/json
+
+{
+  "status": "COMPLETED",
+  "changedBy": "david.kedra",
+  "comment": "Document verified and approved"
+}
+
+### 7. Retrieve Complete Status Audit Trail (chronological descending)
+GET {{baseUrl}}/documents/1/history
+Accept: application/json
+
+### 8. Attempt Illegal Status Transition: COMPLETED -> PROCESSING (Should return 400 Bad Request)
+POST {{baseUrl}}/documents/1/status
+Content-Type: application/json
+
+{
+  "status": "PROCESSING",
+  "changedBy": "hacker",
+  "comment": "Illegal jump from COMPLETED"
+}
+
+### 9. Retrieve Specific History Entry by ID
+GET {{baseUrl}}/documents/status-history/1
+Accept: application/json

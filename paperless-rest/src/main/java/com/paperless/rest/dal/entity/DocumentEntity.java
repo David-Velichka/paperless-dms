@@ -1,5 +1,6 @@
 package com.paperless.rest.dal.entity;
 
+import com.paperless.rest.service.model.DocumentStatus;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -44,6 +45,10 @@ public class DocumentEntity {
     @Column(name = "summary", columnDefinition = "TEXT")
     private String summary;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "current_status", nullable = false, length = 50)
+    private DocumentStatus currentStatus;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private OffsetDateTime createdAt;
 
@@ -54,6 +59,9 @@ public class DocumentEntity {
     protected void onCreate() {
         if (createdAt == null) {
             createdAt = OffsetDateTime.now();
+        }
+        if (currentStatus == null) {
+            currentStatus = DocumentStatus.RECEIVED;
         }
         modifiedAt = OffsetDateTime.now();
     }

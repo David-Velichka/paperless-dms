@@ -5,7 +5,9 @@ import com.paperless.rest.dal.repository.DocumentRepository;
 import com.paperless.rest.exception.BusinessLayerException;
 import com.paperless.rest.mapper.DocumentMapper;
 import com.paperless.rest.service.DocumentService;
+import com.paperless.rest.service.DocumentStatusHistoryService;
 import com.paperless.rest.service.model.DocumentModel;
+import com.paperless.rest.service.model.DocumentStatus;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -21,6 +23,7 @@ public class DocumentServiceImpl implements DocumentService {
 
     private final DocumentRepository documentRepository;
     private final DocumentMapper documentMapper;
+    private final DocumentStatusHistoryService documentStatusHistoryService;
 
     @Override
     public DocumentModel save(DocumentModel documentModel) {
@@ -32,7 +35,14 @@ public class DocumentServiceImpl implements DocumentService {
         }
         log.info("Saving document model: {}", documentModel.getTitle());
         DocumentEntity entity = documentMapper.toEntity(documentModel);
+        boolean isNew = (entity.getId() == null);
+        if (isNew && entity.getCurrentStatus() == null) {
+            entity.setCurrentStatus(DocumentStatus.RECEIVED);
+        }
         DocumentEntity saved = documentRepository.save(entity);
+        if (isNew) {
+            documentStatusHistoryService.createInitialHistory(saved.getId(), "system", "Document metadata created");
+        }
         return documentMapper.toModel(saved);
     }
 
@@ -75,6 +85,7 @@ public class DocumentServiceImpl implements DocumentService {
         if (!documentRepository.existsById(id)) {
             throw new BusinessLayerException("Cannot delete: Document with id " + id + " does not exist");
         }
+        documentStatusHistoryService.deleteByDocumentId(id);
         documentRepository.deleteById(id);
     }
 
@@ -91,7 +102,11 @@ public class DocumentServiceImpl implements DocumentService {
         }
         log.info("Processing upload for document: {}", documentModel.getTitle());
         DocumentEntity entity = documentMapper.toEntity(documentModel);
+        if (entity.getCurrentStatus() == null) {
+            entity.setCurrentStatus(DocumentStatus.RECEIVED);
+        }
         DocumentEntity saved = documentRepository.save(entity);
+        documentStatusHistoryService.createInitialHistory(saved.getId(), "uploader", "Document uploaded");
         DocumentModel savedModel = documentMapper.toModel(saved);
 
         log.info("Document successfully initiated with id: {}", saved.getId());

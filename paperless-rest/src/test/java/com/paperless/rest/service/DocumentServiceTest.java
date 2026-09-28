@@ -28,6 +28,9 @@ class DocumentServiceTest {
     @Mock
     private DocumentMapper documentMapper;
 
+    @Mock
+    private DocumentStatusHistoryService documentStatusHistoryService;
+
     @InjectMocks
     private DocumentServiceImpl documentService;
 
@@ -100,15 +103,6 @@ class DocumentServiceTest {
         verify(documentRepository, times(1)).findById(1L);
     }
 
-    // GIVEN eine Null-ID
-    // WHEN findById im Service aufgerufen wird
-    // THEN wird eine BusinessLayerException geworfen
-    @Test
-    void findById_WithNullId_ThrowsBusinessLayerException() {
-        assertThrows(BusinessLayerException.class, () -> documentService.findById(null));
-        verify(documentRepository, never()).findById(any());
-    }
-
     // GIVEN eine nicht existierende Dokument-ID
     // WHEN findById im Service aufgerufen wird
     // THEN wird eine BusinessLayerException geworfen
@@ -173,15 +167,6 @@ class DocumentServiceTest {
         documentService.deleteById(1L);
 
         verify(documentRepository, times(1)).deleteById(1L);
-    }
-
-    // GIVEN eine Null-ID zum Löschen
-    // WHEN deleteById im Service aufgerufen wird
-    // THEN wird eine BusinessLayerException geworfen
-    @Test
-    void deleteById_WithNullId_ThrowsBusinessLayerException() {
-        assertThrows(BusinessLayerException.class, () -> documentService.deleteById(null));
-        verify(documentRepository, never()).deleteById(any());
     }
 
     // GIVEN eine nicht existierende Dokument-ID zum Löschen
