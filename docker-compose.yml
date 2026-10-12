@@ -33,5 +33,16 @@ services:
       postgres:
         condition: service_healthy
 
+  paperless-webui:
+    build:
+      context: ./paperless-webui
+      dockerfile: Dockerfile
+    container_name: paperless-webui
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    depends_on:
+      - paperless-rest
+
 volumes:
   postgres_data:

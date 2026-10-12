@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Paperless DMS - Document Management System</title>
+    <meta name="description" content="Paperless Document Management System - Academic Software Engineering Semester Project">
+    <link rel="stylesheet" href="css/styles.css">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%236366f1'><path d='M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z'/></svg>">
+</head>
+<body>
+
+    <!-- Header Navigation -->
+    <header class="header">
+        <div class="container header-content">
+            <a href="/" class="logo-group" id="logo-link">
+                <div class="logo-badge">P</div>
+                <div>
+                    <h1 class="logo-title">Paperless DMS</h1>
+                    <div class="logo-subtitle">SWEN3 Semester Project</div>
+                </div>
+            </a>
+            <div class="system-status" id="system-status">
+                <span class="status-dot" id="status-dot"></span>
+                <span id="status-text">Connecting...</span>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="main">
+        <div class="container">
+
+            <!-- Stats Overview Cards -->
+            <section class="stats-grid" id="stats-section">
+                <div class="stat-card">
+                    <div class="stat-header">
+                        <span class="stat-label">Total Documents</span>
+                    </div>
+                    <div class="stat-value" id="stat-total">0</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-header">
+                        <span class="stat-label">Processing</span>
+                    </div>
+                    <div class="stat-value" id="stat-processing">0</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-header">
+                        <span class="stat-label">Review Pending</span>
+                    </div>
+                    <div class="stat-value" id="stat-review">0</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-header">
+                        <span class="stat-label">Completed</span>
+                    </div>
+                    <div class="stat-value" id="stat-completed">0</div>
+                </div>
+            </section>
+
+            <!-- Action Bar: Search, Filter & Upload Trigger -->
+            <section class="action-bar" id="action-bar">
+                <div class="search-filter-group">
+                    <div class="search-box">
+                        <span class="search-icon">🔍</span>
+                        <input type="text" id="search-input" class="search-input" placeholder="Search documents by title...">
+                    </div>
+                    <select id="status-filter" class="filter-select">
+                        <option value="ALL">All Statuses</option>
+                        <option value="RECEIVED">Received</option>
+                        <option value="PROCESSING">Processing</option>
+                        <option value="REVIEW_PENDING">Review Pending</option>
+                        <option value="COMPLETED">Completed</option>
+                        <option value="REJECTED">Rejected</option>
+                    </select>
+                </div>
+                <button id="btn-open-upload" class="btn btn-primary">
+                    <span>+</span> Upload Document
+                </button>
+            </section>
+
+            <!-- Documents Table Card -->
+            <section class="card" id="documents-section">
+                <div class="table-responsive">
+                    <table class="table" id="documents-table">
+                        <thead>
+                            <tr>
+                                <th style="width: 80px;">ID</th>
+                                <th>Document Title</th>
+                                <th>File Size</th>
+                                <th>Uploaded At</th>
+                                <th>Lifecycle Status</th>
+                                <th style="width: 180px;">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="docs-table-body">
+                            <!-- Populated dynamically via app.js -->
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Empty State -->
+                <div id="empty-state" class="empty-state" style="display: none;">
+                    <div class="empty-icon">📂</div>
+                    <div class="empty-text">No documents found</div>
+                    <div class="empty-subtext">Upload a PDF document to begin archiving and managing files.</div>
+                </div>
+            </section>
+
+        </div>
+    </main>
+
+    <!-- Upload Document Modal -->
+    <div id="upload-modal" class="modal-overlay">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title">Upload PDF Document</h2>
+                <button type="button" class="modal-close" id="upload-modal-close">&times;</button>
+            </div>
+            <form id="upload-form">
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label for="doc-title-input" class="form-label">Document Title (Optional)</label>
+                        <input type="text" id="doc-title-input" class="form-control" placeholder="e.g., Annual Financial Report 2026">
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">PDF File *</label>
+                        <div id="dropzone" class="dropzone">
+                            <div class="dropzone-icon">📄</div>
+                            <div class="dropzone-title">Click to browse or drag and drop your file here</div>
+                            <div class="dropzone-desc">Only PDF files up to 50 MB are supported</div>
+                            <input type="file" id="file-input" accept=".pdf,application/pdf" style="display: none;">
+                        </div>
+                        <div id="selected-file-name" style="margin-top: 0.5rem; font-size: 0.8125rem; color: var(--accent-primary); font-weight: 500;"></div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" id="btn-cancel-upload">Cancel</button>
+                    <button type="submit" class="btn btn-primary" id="btn-submit-upload">Upload Document</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Document Details & Status Transition Modal -->
+    <div id="detail-modal" class="modal-overlay">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title">Document Details &amp; Lifecycle</h2>
+                <button type="button" class="modal-close" id="detail-modal-close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <!-- Metadata Grid -->
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.5rem; background: rgba(255, 255, 255, 0.02); padding: 1rem; border-radius: var(--radius-md); border: 1px solid var(--border-subtle);">
+                    <div>
+                        <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase;">Document ID</div>
+                        <div id="detail-id" style="font-weight: 600; font-size: 0.9375rem;">-</div>
+                    </div>
+                    <div>
+                        <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase;">Current Status</div>
+                        <div style="margin-top: 2px;"><span id="detail-status-badge" class="badge">-</span></div>
+                    </div>
+                    <div>
+                        <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase;">Title</div>
+                        <div id="detail-title" style="font-weight: 500; font-size: 0.875rem;">-</div>
+                    </div>
+                    <div>
+                        <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase;">Original Filename</div>
+                        <div id="detail-filename" style="font-weight: 500; font-size: 0.875rem;">-</div>
+                    </div>
+                    <div>
+                        <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase;">File Size</div>
+                        <div id="detail-size" style="font-weight: 500; font-size: 0.875rem;">-</div>
+                    </div>
+                    <div>
+                        <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase;">Uploaded At</div>
+                        <div id="detail-created" style="font-weight: 500; font-size: 0.875rem;">-</div>
+                    </div>
+                </div>
+
+                <!-- Status Transition Section (Custom Use Case 4) -->
+                <div id="transition-container" style="margin-bottom: 1.5rem;">
+                    <h3 style="font-size: 0.9375rem; font-weight: 600; margin-bottom: 0.75rem; color: var(--text-primary);">
+                        Trigger Status Transition
+                    </h3>
+                    <div class="form-group">
+                        <label for="target-status-select" class="form-label">Permissible Next Status</label>
+                        <select id="target-status-select" class="form-control"></select>
+                    </div>
+                    <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 0.75rem; margin-bottom: 0.75rem;">
+                        <div>
+                            <label for="actor-input" class="form-label">Actor (Changed By)</label>
+                            <input type="text" id="actor-input" class="form-control" value="Web User">
+                        </div>
+                        <div>
+                            <label for="comment-input" class="form-label">Transition Comment / Rationale</label>
+                            <input type="text" id="comment-input" class="form-control" placeholder="Optional audit comment">
+                        </div>
+                    </div>
+                    <button type="button" id="btn-update-status" class="btn btn-primary btn-sm" style="width: 100%; justify-content: center;">
+                        Apply Transition
+                    </button>
+                </div>
+
+                <!-- Audit History Timeline -->
+                <div>
+                    <h3 style="font-size: 0.9375rem; font-weight: 600; margin-bottom: 0.5rem; color: var(--text-primary);">
+                        Lifecycle Audit History (1:n Audit Log)
+                    </h3>
+                    <div id="history-timeline" class="timeline">
+                        <!-- Populated dynamically via app.js -->
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="document.getElementById('detail-modal').classList.remove('active')">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Delete Confirmation Modal -->
+    <div id="delete-modal" class="modal-overlay">
+        <div class="modal-content" style="max-width: 440px;">
+            <div class="modal-header">
+                <h2 class="modal-title">Delete Document</h2>
+                <button type="button" class="modal-close" id="delete-modal-close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p style="color: var(--text-secondary); font-size: 0.875rem;">
+                    Are you sure you want to permanently delete document <strong id="delete-doc-title" style="color: var(--text-primary);"></strong>?
+                </p>
+                <p style="color: #f87171; font-size: 0.8125rem; margin-top: 0.5rem;">
+                    This action will also cascade and remove all associated status history audit records from PostgreSQL.
+                </p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" id="btn-cancel-delete">Cancel</button>
+                <button type="button" class="btn btn-danger" id="btn-confirm-delete">Delete Document</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notification Container -->
+    <div id="toast-container" class="toast-container"></div>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            Paperless DMS &bull; SWEN3 Semester Project &bull; BIF5 Technikum Wien
+        </div>
+    </footer>
+
+    <!-- Frontend Application Logic -->
+    <script type="module" src="js/app.js"></script>
+</body>
+</html>
