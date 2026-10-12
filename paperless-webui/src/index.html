@@ -20,9 +20,20 @@
                     <div class="logo-subtitle">SWEN3 Semester Project</div>
                 </div>
             </a>
-            <div class="system-status" id="system-status">
-                <span class="status-dot" id="status-dot"></span>
-                <span id="status-text">Connecting...</span>
+            <div class="header-right">
+                <div class="system-status" id="system-status">
+                    <span class="status-dot" id="status-dot"></span>
+                    <span id="status-text">Connecting...</span>
+                </div>
+                <div class="auth-bar" id="auth-bar">
+                    <div id="user-badge" class="user-badge" style="display: none;">
+                        <span class="user-label">User:</span>
+                        <span id="user-display-name">admin</span>
+                        <span id="user-display-role" class="badge badge-info">ADMIN</span>
+                    </div>
+                    <button type="button" id="btn-login-modal" class="btn btn-secondary btn-sm">Sign In</button>
+                    <button type="button" id="btn-logout" class="btn btn-secondary btn-sm" style="display: none;">Sign Out</button>
+                </div>
             </div>
         </div>
     </header>
@@ -63,7 +74,9 @@
             <section class="action-bar" id="action-bar">
                 <div class="search-filter-group">
                     <div class="search-box">
-                        <span class="search-icon">🔍</span>
+                        <span class="search-icon">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                        </span>
                         <input type="text" id="search-input" class="search-input" placeholder="Search documents by title...">
                     </div>
                     <select id="status-filter" class="filter-select">
@@ -102,7 +115,9 @@
 
                 <!-- Empty State -->
                 <div id="empty-state" class="empty-state" style="display: none;">
-                    <div class="empty-icon">📂</div>
+                    <div class="empty-icon">
+                        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
+                    </div>
                     <div class="empty-text">No documents found</div>
                     <div class="empty-subtext">Upload a PDF document to begin archiving and managing files.</div>
                 </div>
@@ -128,7 +143,9 @@
                     <div class="form-group">
                         <label class="form-label">PDF File *</label>
                         <div id="dropzone" class="dropzone">
-                            <div class="dropzone-icon">📄</div>
+                            <div class="dropzone-icon">
+                                <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
+                            </div>
                             <div class="dropzone-title">Click to browse or drag and drop your file here</div>
                             <div class="dropzone-desc">Only PDF files up to 50 MB are supported</div>
                             <input type="file" id="file-input" accept=".pdf,application/pdf" style="display: none;">
@@ -239,6 +256,47 @@
                 <button type="button" class="btn btn-secondary" id="btn-cancel-delete">Cancel</button>
                 <button type="button" class="btn btn-danger" id="btn-confirm-delete">Delete Document</button>
             </div>
+        </div>
+    </div>
+
+    <!-- Sign In / Authentication Modal -->
+    <div id="login-modal" class="modal-overlay">
+        <div class="modal-content" style="max-width: 440px;">
+            <div class="modal-header">
+                <h2 class="modal-title">Sign In to Paperless DMS</h2>
+                <button type="button" class="modal-close" id="login-modal-close">&times;</button>
+            </div>
+            <form id="login-form">
+                <div class="modal-body">
+                    <p style="color: var(--text-secondary); font-size: 0.875rem; margin-bottom: 1.25rem;">
+                        Authentication required for document operations. Demo credentials:
+                    </p>
+                    <div style="display: flex; gap: 0.5rem; margin-bottom: 1.25rem; flex-wrap: wrap;">
+                        <button type="button" class="btn btn-secondary btn-sm" id="btn-quick-admin" style="font-size: 0.75rem; padding: 4px 10px;">
+                            Fill Admin (admin / admin123)
+                        </button>
+                        <button type="button" class="btn btn-secondary btn-sm" id="btn-quick-user" style="font-size: 0.75rem; padding: 4px 10px;">
+                            Fill User (user / password)
+                        </button>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="login-username" class="form-label">Username</label>
+                        <input type="text" id="login-username" class="form-control" placeholder="admin" required autocomplete="username">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="login-password" class="form-label">Password</label>
+                        <input type="password" id="login-password" class="form-control" placeholder="••••••••" required autocomplete="current-password">
+                    </div>
+
+                    <div id="login-error-alert" style="display: none; padding: 0.75rem; border-radius: var(--radius-sm); background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.3); color: #f87171; font-size: 0.8125rem; margin-top: 0.75rem;"></div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" id="btn-cancel-login">Cancel</button>
+                    <button type="submit" class="btn btn-primary" id="btn-submit-login">Sign In</button>
+                </div>
+            </form>
         </div>
     </div>
 

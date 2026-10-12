@@ -75,6 +75,25 @@ const elements = {
     btnConfirmDelete: document.getElementById('btn-confirm-delete'),
     btnCancelDelete: document.getElementById('btn-cancel-delete'),
 
+    // Auth Header Controls
+    userBadge: document.getElementById('user-badge'),
+    userDisplayName: document.getElementById('user-display-name'),
+    userDisplayRole: document.getElementById('user-display-role'),
+    btnLoginModal: document.getElementById('btn-login-modal'),
+    btnLogout: document.getElementById('btn-logout'),
+
+    // Login Modal
+    loginModal: document.getElementById('login-modal'),
+    loginForm: document.getElementById('login-form'),
+    loginUsername: document.getElementById('login-username'),
+    loginPassword: document.getElementById('login-password'),
+    loginErrorAlert: document.getElementById('login-error-alert'),
+    loginModalClose: document.getElementById('login-modal-close'),
+    btnCancelLogin: document.getElementById('btn-cancel-login'),
+    btnSubmitLogin: document.getElementById('btn-submit-login'),
+    btnQuickAdmin: document.getElementById('btn-quick-admin'),
+    btnQuickUser: document.getElementById('btn-quick-user'),
+
     // Toast Container
     toastContainer: document.getElementById('toast-container')
 };
@@ -111,16 +130,24 @@ function showToast(message, type = 'success') {
 
 // Data Fetching & Rendering
 async function loadDocuments() {
+    const isOnline = await API.checkHealth();
+    updateSystemHealth(isOnline);
+
+    if (!API.isAuthenticated()) {
+        state.documents = [];
+        updateStats();
+        renderTable();
+        return;
+    }
+
     try {
         const docs = await API.getDocuments(state.filterTitle);
         state.documents = docs;
         updateStats();
         renderTable();
-        updateSystemHealth(true);
     } catch (err) {
         console.error('Failed to load documents:', err);
-        updateSystemHealth(false);
-        showToast('Failed to connect to REST backend', 'error');
+        showToast(err.message || 'Failed to fetch documents', 'error');
     }
 }
 
@@ -345,6 +372,11 @@ async function loadAuditHistory(docId) {
 }
 
 async function handleStatusUpdate() {
+    if (!API.isAuthenticated()) {
+        showToast('Please sign in to update document lifecycle.', 'error');
+        openLoginModal();
+        return;
+    }
     if (!state.selectedDoc) return;
 
     const targetStatus = elements.targetStatusSelect.value;
@@ -377,6 +409,11 @@ function closeDetailModal() {
 
 // Delete Modal Logic
 function openDeleteModal(docId) {
+    if (!API.isAuthenticated()) {
+        showToast('Please sign in to delete documents.', 'error');
+        openLoginModal();
+        return;
+    }
     const doc = state.documents.find(d => d.id === docId);
     if (!doc) return;
 
@@ -410,6 +447,64 @@ async function handleConfirmDelete() {
     }
 }
 
+// Authentication Handling
+function updateAuthUI() {
+    const user = API.getUser();
+    if (API.isAuthenticated() && user) {
+        elements.userBadge.style.display = 'flex';
+        elements.userDisplayName.textContent = user.username;
+        elements.userDisplayRole.textContent = user.role || 'USER';
+        elements.btnLoginModal.style.display = 'none';
+        elements.btnLogout.style.display = 'inline-flex';
+        if (elements.actorInput) {
+            elements.actorInput.value = user.username;
+        }
+    } else {
+        elements.userBadge.style.display = 'none';
+        elements.btnLoginModal.style.display = 'inline-flex';
+        elements.btnLogout.style.display = 'none';
+        if (elements.actorInput) {
+            elements.actorInput.value = 'Web User';
+        }
+    }
+}
+
+function openLoginModal() {
+    elements.loginErrorAlert.style.display = 'none';
+    elements.loginModal.classList.add('active');
+    elements.loginUsername.focus();
+}
+
+function closeLoginModal() {
+    elements.loginModal.classList.remove('active');
+    elements.loginForm.reset();
+    elements.loginErrorAlert.style.display = 'none';
+}
+
+async function handleLoginSubmit(e) {
+    e.preventDefault();
+    const username = elements.loginUsername.value.trim();
+    const password = elements.loginPassword.value;
+
+    elements.btnSubmitLogin.disabled = true;
+    elements.btnSubmitLogin.textContent = 'Signing in...';
+    elements.loginErrorAlert.style.display = 'none';
+
+    try {
+        const response = await API.login(username, password);
+        showToast(`Signed in as ${response.username} (${response.role})`);
+        closeLoginModal();
+        updateAuthUI();
+        await loadDocuments();
+    } catch (err) {
+        elements.loginErrorAlert.textContent = err.message || 'Invalid username or password';
+        elements.loginErrorAlert.style.display = 'block';
+    } finally {
+        elements.btnSubmitLogin.disabled = false;
+        elements.btnSubmitLogin.textContent = 'Sign In';
+    }
+}
+
 // Event Listeners Initialization
 function initEventListeners() {
     // Search input with debounce
@@ -429,9 +524,33 @@ function initEventListeners() {
     });
 
     // Open Upload Modal
-    elements.btnOpenUpload.addEventListener('click', openUploadModal);
+    elements.btnOpenUpload.addEventListener('click', () => {
+        if (!API.isAuthenticated()) {
+            showToast('Please sign in to upload documents.', 'error');
+            openLoginModal();
+            return;
+        }
+        openUploadModal();
+    });
     elements.uploadModalClose.addEventListener('click', closeUploadModal);
     elements.btnCancelUpload.addEventListener('click', closeUploadModal);
+
+    // Auth & Login Controls
+    elements.btnLoginModal.addEventListener('click', openLoginModal);
+    elements.loginModalClose.addEventListener('click', closeLoginModal);
+    elements.btnCancelLogin.addEventListener('click', closeLoginModal);
+    elements.loginForm.addEventListener('submit', handleLoginSubmit);
+    elements.btnLogout.addEventListener('click', () => API.logout());
+
+    // Quick demo accounts
+    elements.btnQuickAdmin.addEventListener('click', () => {
+        elements.loginUsername.value = 'admin';
+        elements.loginPassword.value = 'admin123';
+    });
+    elements.btnQuickUser.addEventListener('click', () => {
+        elements.loginUsername.value = 'user';
+        elements.loginPassword.value = 'password';
+    });
 
     // Dropzone interactions
     elements.dropzone.addEventListener('click', () => elements.fileInput.click());
@@ -472,8 +591,22 @@ function initEventListeners() {
     elements.btnCancelDelete.addEventListener('click', closeDeleteModal);
     elements.btnConfirmDelete.addEventListener('click', handleConfirmDelete);
 
+    // Auth events from API
+    window.addEventListener('auth:unauthorized', () => {
+        updateAuthUI();
+        showToast('Authentication required or session expired. Please sign in.', 'error');
+        openLoginModal();
+    });
+
+    window.addEventListener('auth:logout', () => {
+        updateAuthUI();
+        showToast('Signed out successfully.');
+        loadDocuments();
+    });
+
     // Close Modals on backdrop click
-    [elements.uploadModal, elements.detailModal, elements.deleteModal].forEach(modal => {
+    [elements.uploadModal, elements.detailModal, elements.deleteModal, elements.loginModal].forEach(modal => {
+        if (!modal) return;
         modal.addEventListener('click', (e) => {
             if (e.target === modal) {
                 modal.classList.remove('active');
@@ -485,5 +618,7 @@ function initEventListeners() {
 // Initial Boot
 document.addEventListener('DOMContentLoaded', () => {
     initEventListeners();
+    updateAuthUI();
     loadDocuments();
 });
+
