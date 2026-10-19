@@ -4,7 +4,6 @@ import com.paperless.rest.dal.entity.DocumentEntity;
 import com.paperless.rest.dto.DocumentDto;
 import com.paperless.rest.service.model.DocumentModel;
 import org.mapstruct.Mapper;
-import org.mapstruct.Mapping;
 import org.mapstruct.MappingTarget;
 
 import java.util.List;

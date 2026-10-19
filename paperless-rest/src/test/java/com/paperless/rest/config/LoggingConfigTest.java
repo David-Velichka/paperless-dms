@@ -48,6 +48,7 @@ class LoggingConfigTest {
         assertEquals(LoggingConfig.class.getName(), logger.getName());
     }
 
+    @SuppressWarnings("unused")
     private void dummyMethod(Logger log) {
     }
 }
