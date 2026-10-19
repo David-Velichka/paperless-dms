@@ -11,6 +11,7 @@ import com.paperless.rest.service.DocumentStatusHistoryService;
 import com.paperless.rest.service.model.DocumentModel;
 import com.paperless.rest.service.model.DocumentStatus;
 import com.paperless.rest.service.model.DocumentStatusHistoryModel;
+import com.paperless.rest.service.validation.DocumentStatusHistoryModelValidator;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -29,6 +30,7 @@ public class DocumentStatusHistoryServiceImpl implements DocumentStatusHistorySe
     private final DocumentStatusHistoryRepository documentStatusHistoryRepository;
     private final DocumentMapper documentMapper;
     private final DocumentStatusHistoryMapper documentStatusHistoryMapper;
+    private final DocumentStatusHistoryModelValidator historyModelValidator;
 
     @Override
     public DocumentStatusHistoryModel changeStatus(Long documentId, DocumentStatus targetStatus, String changedBy, String comment) {
@@ -37,15 +39,6 @@ public class DocumentStatusHistoryServiceImpl implements DocumentStatusHistorySe
         }
         if (targetStatus == null) {
             throw new BusinessLayerException("Target status must not be null");
-        }
-        if (changedBy == null || changedBy.isBlank()) {
-            throw new BusinessLayerException("Changed by actor must not be blank");
-        }
-        if (changedBy.length() > 100) {
-            throw new BusinessLayerException("Changed by actor must not exceed 100 characters");
-        }
-        if (comment != null && comment.length() > 500) {
-            throw new BusinessLayerException("Comment must not exceed 500 characters");
         }
 
         DocumentEntity documentEntity = documentRepository.findById(documentId)
@@ -58,18 +51,21 @@ public class DocumentStatusHistoryServiceImpl implements DocumentStatusHistorySe
 
         documentModel.transitionTo(targetStatus);
 
-        documentMapper.updateEntityFromModel(documentModel, documentEntity);
-        documentRepository.save(documentEntity);
-
-        DocumentStatusHistoryEntity historyEntity = DocumentStatusHistoryEntity.builder()
+        DocumentStatusHistoryModel historyModel = DocumentStatusHistoryModel.builder()
                 .documentId(documentId)
                 .status(targetStatus)
                 .previousStatus(previousStatus)
-                .changedBy(changedBy.trim())
+                .changedBy(changedBy != null ? changedBy.trim() : null)
                 .timestamp(OffsetDateTime.now())
                 .comment(comment != null ? comment.trim() : null)
                 .build();
 
+        historyModelValidator.validateOrThrow(historyModel);
+
+        documentMapper.updateEntityFromModel(documentModel, documentEntity);
+        documentRepository.save(documentEntity);
+
+        DocumentStatusHistoryEntity historyEntity = documentStatusHistoryMapper.toEntity(historyModel);
         DocumentStatusHistoryEntity savedHistory = documentStatusHistoryRepository.save(historyEntity);
         return documentStatusHistoryMapper.toModel(savedHistory);
     }
@@ -96,7 +92,7 @@ public class DocumentStatusHistoryServiceImpl implements DocumentStatusHistorySe
         String actor = (changedBy != null && !changedBy.isBlank()) ? changedBy.trim() : "uploader";
         String note = (comment != null && !comment.isBlank()) ? comment.trim() : "Initial upload";
 
-        DocumentStatusHistoryEntity historyEntity = DocumentStatusHistoryEntity.builder()
+        DocumentStatusHistoryModel historyModel = DocumentStatusHistoryModel.builder()
                 .documentId(documentId)
                 .status(DocumentStatus.RECEIVED)
                 .previousStatus(null)
@@ -105,6 +101,9 @@ public class DocumentStatusHistoryServiceImpl implements DocumentStatusHistorySe
                 .comment(note)
                 .build();
 
+        historyModelValidator.validateOrThrow(historyModel);
+
+        DocumentStatusHistoryEntity historyEntity = documentStatusHistoryMapper.toEntity(historyModel);
         DocumentStatusHistoryEntity saved = documentStatusHistoryRepository.save(historyEntity);
         return documentStatusHistoryMapper.toModel(saved);
     }

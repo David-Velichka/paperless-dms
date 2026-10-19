@@ -7,6 +7,9 @@ interface UploadModalProps {
   onUpload: (file: File, title: string) => Promise<void>;
 }
 
+const MAX_FILE_SIZE_BYTES = 50 * 1024 * 1024; // 50 MB limit
+const MAX_TITLE_LENGTH = 255;
+
 export const UploadModal: React.FC<UploadModalProps> = ({
   isOpen,
   onClose,
@@ -14,6 +17,7 @@ export const UploadModal: React.FC<UploadModalProps> = ({
 }) => {
   const [title, setTitle] = useState('');
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [validationError, setValidationError] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -23,13 +27,39 @@ export const UploadModal: React.FC<UploadModalProps> = ({
   const handleClose = () => {
     setTitle('');
     setSelectedFile(null);
+    setValidationError(null);
     setIsDragging(false);
     onClose();
   };
 
+  const validateFile = (file: File): string | null => {
+    const isPdf = file.name.toLowerCase().endsWith('.pdf') || file.type === 'application/pdf';
+    if (!isPdf) {
+      return 'Invalid file type: Only PDF documents (*.pdf) are supported.';
+    }
+    if (file.size <= 0) {
+      return 'Invalid file: The selected file is empty.';
+    }
+    if (file.size > MAX_FILE_SIZE_BYTES) {
+      return `File size (${formatBytes(file.size)}) exceeds the maximum allowed limit of 50 MB.`;
+    }
+    return null;
+  };
+
+  const handleFileSelection = (file: File) => {
+    const errorMsg = validateFile(file);
+    if (errorMsg) {
+      setValidationError(errorMsg);
+      setSelectedFile(null);
+    } else {
+      setValidationError(null);
+      setSelectedFile(file);
+    }
+  };
+
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
-      setSelectedFile(e.target.files[0]);
+      handleFileSelection(e.target.files[0]);
     }
   };
 
@@ -46,18 +76,39 @@ export const UploadModal: React.FC<UploadModalProps> = ({
     e.preventDefault();
     setIsDragging(false);
     if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-      setSelectedFile(e.dataTransfer.files[0]);
+      handleFileSelection(e.dataTransfer.files[0]);
     }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedFile) return;
+    if (!selectedFile) {
+      setValidationError('Please select a PDF file to upload.');
+      return;
+    }
 
+    const fileError = validateFile(selectedFile);
+    if (fileError) {
+      setValidationError(fileError);
+      return;
+    }
+
+    if (title.length > MAX_TITLE_LENGTH) {
+      setValidationError(`Document title must not exceed ${MAX_TITLE_LENGTH} characters.`);
+      return;
+    }
+
+    setValidationError(null);
     setIsSubmitting(true);
     try {
-      await onUpload(selectedFile, title);
+      await onUpload(selectedFile, title.trim());
       handleClose();
+    } catch (err: unknown) {
+      if (err instanceof Error) {
+        setValidationError(err.message);
+      } else {
+        setValidationError('Upload failed. Please check your network and credentials.');
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -87,15 +138,23 @@ export const UploadModal: React.FC<UploadModalProps> = ({
           <div className="modal-body">
             <div className="form-group">
               <label htmlFor="doc-title-input" className="form-label">
-                Document Title (Optional)
+                Document Title (Optional, max 255 chars)
               </label>
               <input
                 type="text"
                 id="doc-title-input"
                 className="form-control"
                 placeholder="e.g., Annual Financial Report 2026"
+                maxLength={MAX_TITLE_LENGTH}
                 value={title}
-                onChange={(e) => setTitle(e.target.value)}
+                onChange={(e) => {
+                  setTitle(e.target.value);
+                  if (e.target.value.length > MAX_TITLE_LENGTH) {
+                    setValidationError(`Title cannot exceed ${MAX_TITLE_LENGTH} characters.`);
+                  } else if (validationError && validationError.includes('Title')) {
+                    setValidationError(null);
+                  }
+                }}
               />
             </div>
 
@@ -137,7 +196,7 @@ export const UploadModal: React.FC<UploadModalProps> = ({
                   onChange={handleFileChange}
                 />
               </div>
-              {selectedFile && (
+              {selectedFile && !validationError && (
                 <div
                   id="selected-file-name"
                   style={{
@@ -151,6 +210,23 @@ export const UploadModal: React.FC<UploadModalProps> = ({
                 </div>
               )}
             </div>
+
+            {validationError && (
+              <div
+                id="upload-error-alert"
+                style={{
+                  padding: '0.75rem',
+                  borderRadius: 'var(--radius-sm)',
+                  backgroundColor: 'rgba(239, 68, 68, 0.15)',
+                  border: '1px solid rgba(239, 68, 68, 0.3)',
+                  color: '#f87171',
+                  fontSize: '0.8125rem',
+                  marginTop: '0.5rem'
+                }}
+              >
+                {validationError}
+              </div>
+            )}
           </div>
           <div className="modal-footer">
             <button
@@ -165,7 +241,7 @@ export const UploadModal: React.FC<UploadModalProps> = ({
               type="submit"
               className="btn btn-primary"
               id="btn-submit-upload"
-              disabled={isSubmitting || !selectedFile}
+              disabled={isSubmitting || !selectedFile || !!validationError}
             >
               {isSubmitting ? 'Uploading...' : 'Upload Document'}
             </button>
@@ -175,4 +251,3 @@ export const UploadModal: React.FC<UploadModalProps> = ({
     </div>
   );
 };
-

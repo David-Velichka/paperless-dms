@@ -32,6 +32,7 @@ export const DetailModal: React.FC<DetailModalProps> = ({
   const [selectedNextStatus, setSelectedNextStatus] = useState<DocumentStatus | ''>('');
   const [actor, setActor] = useState(defaultActor);
   const [comment, setComment] = useState('');
+  const [validationError, setValidationError] = useState<string | null>(null);
   const [isUpdating, setIsUpdating] = useState(false);
 
   useEffect(() => {
@@ -41,6 +42,7 @@ export const DetailModal: React.FC<DetailModalProps> = ({
       setSelectedNextStatus(nextStates.length > 0 ? nextStates[0] : '');
       setActor(defaultActor);
       setComment('');
+      setValidationError(null);
     }
   }, [document, defaultActor]);
 
@@ -50,11 +52,33 @@ export const DetailModal: React.FC<DetailModalProps> = ({
   const nextStates = STATUS_TRANSITIONS[docStatus] || [];
 
   const handleApplyTransition = async () => {
-    if (!selectedNextStatus) return;
+    if (!selectedNextStatus) {
+      setValidationError('Please select a valid target status.');
+      return;
+    }
+    if (!actor.trim()) {
+      setValidationError('Actor (Changed By) is required.');
+      return;
+    }
+    if (actor.length > 100) {
+      setValidationError('Actor name must not exceed 100 characters.');
+      return;
+    }
+    if (comment.length > 500) {
+      setValidationError('Comment must not exceed 500 characters.');
+      return;
+    }
 
+    setValidationError(null);
     setIsUpdating(true);
     try {
-      await onUpdateStatus(document.id, selectedNextStatus, actor, comment);
+      await onUpdateStatus(document.id, selectedNextStatus, actor.trim(), comment.trim());
+    } catch (err: unknown) {
+      if (err instanceof Error) {
+        setValidationError(err.message);
+      } else {
+        setValidationError('Failed to update status. Please try again.');
+      }
     } finally {
       setIsUpdating(false);
     }
@@ -257,12 +281,28 @@ export const DetailModal: React.FC<DetailModalProps> = ({
                   />
                 </div>
               </div>
+              {validationError && (
+                <div
+                  id="transition-error-alert"
+                  style={{
+                    padding: '0.625rem 0.75rem',
+                    borderRadius: 'var(--radius-sm)',
+                    backgroundColor: 'rgba(239, 68, 68, 0.15)',
+                    border: '1px solid rgba(239, 68, 68, 0.3)',
+                    color: '#f87171',
+                    fontSize: '0.8125rem',
+                    marginBottom: '0.75rem'
+                  }}
+                >
+                  {validationError}
+                </div>
+              )}
               <button
                 type="button"
                 id="btn-update-status"
                 className="btn btn-primary btn-sm"
                 style={{ width: '100%', justifyContent: 'center' }}
-                disabled={isUpdating}
+                disabled={isUpdating || !actor.trim() || !selectedNextStatus}
                 onClick={handleApplyTransition}
               >
                 {isUpdating ? 'Updating...' : 'Apply Transition'}

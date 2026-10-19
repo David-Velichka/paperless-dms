@@ -36,6 +36,8 @@ class AuthControllerTest {
     @MockitoBean
     private UserMapper userMapper;
 
+    // --- Action 1: login ---
+
     // GIVEN gültige Anmeldedaten im Request-Body
     // WHEN POST /api/auth/login aufgerufen wird
     // THEN wird der HTTP-Status 200 OK und das LoginResponseDto mit Token zurückgegeben
@@ -72,6 +74,22 @@ class AuthControllerTest {
                 .andExpect(jsonPath("$.error").value("Unauthorized"));
     }
 
+    // GIVEN ein Login-Request mit leerem Benutzernamen
+    // WHEN POST /api/auth/login aufgerufen wird
+    // THEN wird der HTTP-Status 400 Bad Request wegen Validierungsfehlern zurückgegeben
+    @Test
+    void login_WithBlankUsername_ReturnsBadRequest() throws Exception {
+        LoginRequestDto request = new LoginRequestDto("   ", "admin123");
+
+        mockMvc.perform(post("/api/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("Validation Failed"));
+    }
+
+    // --- Action 2: getCurrentUser ---
+
     // GIVEN ein gültiger Bearer-Header im Authorization-Header
     // WHEN GET /api/auth/me aufgerufen wird
     // THEN wird der HTTP-Status 200 OK und das UserDto zurückgegeben
@@ -98,5 +116,20 @@ class AuthControllerTest {
         mockMvc.perform(get("/api/auth/me"))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.error").value("Unauthorized"));
+    }
+
+    // GIVEN ein ungültiger oder abgelaufener Authentifizierungs-Token
+    // WHEN GET /api/auth/me aufgerufen wird
+    // THEN liefert der Service InvalidCredentialsException und der Controller 401 Unauthorized
+    @Test
+    void getCurrentUser_WithInvalidToken_ReturnsUnauthorized() throws Exception {
+        when(authService.getCurrentUser("invalid.token"))
+                .thenThrow(new InvalidCredentialsException("Invalid or expired authentication token"));
+
+        mockMvc.perform(get("/api/auth/me")
+                        .header("Authorization", "Bearer invalid.token"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.error").value("Unauthorized"))
+                .andExpect(jsonPath("$.message").value("Invalid or expired authentication token"));
     }
 }

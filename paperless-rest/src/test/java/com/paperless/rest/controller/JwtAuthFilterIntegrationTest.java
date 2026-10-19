@@ -1,6 +1,5 @@
 package com.paperless.rest.controller;
 
-import com.paperless.rest.config.JwtAuthFilter;
 import com.paperless.rest.config.SecurityFilterConfig;
 import com.paperless.rest.mapper.DocumentMapper;
 import com.paperless.rest.service.DocumentService;

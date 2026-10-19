@@ -8,6 +8,7 @@ import com.paperless.rest.service.DocumentService;
 import com.paperless.rest.service.DocumentStatusHistoryService;
 import com.paperless.rest.service.model.DocumentModel;
 import com.paperless.rest.service.model.DocumentStatus;
+import com.paperless.rest.service.validation.DocumentModelValidator;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -24,15 +25,15 @@ public class DocumentServiceImpl implements DocumentService {
     private final DocumentRepository documentRepository;
     private final DocumentMapper documentMapper;
     private final DocumentStatusHistoryService documentStatusHistoryService;
+    private final DocumentModelValidator documentModelValidator;
 
     @Override
     public DocumentModel save(DocumentModel documentModel) {
         if (documentModel == null) {
             throw new BusinessLayerException("Document model must not be null");
         }
-        if (documentModel.getTitle() == null || documentModel.getTitle().isBlank()) {
-            throw new BusinessLayerException("Document title must not be blank");
-        }
+        documentModelValidator.validateOrThrow(documentModel);
+
         log.info("Saving document model: {}", documentModel.getTitle());
         DocumentEntity entity = documentMapper.toEntity(documentModel);
         boolean isNew = (entity.getId() == null);
@@ -94,12 +95,11 @@ public class DocumentServiceImpl implements DocumentService {
         if (documentModel == null) {
             throw new BusinessLayerException("Document model must not be null");
         }
-        if (documentModel.getTitle() == null || documentModel.getTitle().isBlank()) {
-            throw new BusinessLayerException("Document title must not be blank");
-        }
         if (content == null || content.length == 0) {
             throw new BusinessLayerException("Document file content must not be empty");
         }
+        documentModelValidator.validateOrThrow(documentModel);
+
         log.info("Processing upload for document: {}", documentModel.getTitle());
         DocumentEntity entity = documentMapper.toEntity(documentModel);
         if (entity.getCurrentStatus() == null) {

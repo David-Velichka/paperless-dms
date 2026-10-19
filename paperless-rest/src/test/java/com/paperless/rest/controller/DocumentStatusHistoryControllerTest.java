@@ -3,6 +3,7 @@ package com.paperless.rest.controller;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.paperless.rest.dto.DocumentStatusChangeRequestDto;
 import com.paperless.rest.dto.DocumentStatusHistoryDto;
+import com.paperless.rest.exception.BusinessLayerException;
 import com.paperless.rest.mapper.DocumentStatusHistoryMapper;
 import com.paperless.rest.service.DocumentStatusHistoryService;
 import com.paperless.rest.service.model.DocumentStatus;
@@ -39,6 +40,8 @@ class DocumentStatusHistoryControllerTest {
     @MockitoBean
     private DocumentStatusHistoryMapper documentStatusHistoryMapper;
 
+    // --- Action 1: getHistoryForDocument ---
+
     // GIVEN eine gültige Dokumenten-ID mit vorhandenem Verlauf
     // WHEN GET /api/documents/{id}/history aufgerufen wird
     // THEN liefert der Controller 200 OK und ein JSON-Array
@@ -68,6 +71,22 @@ class DocumentStatusHistoryControllerTest {
                 .andExpect(jsonPath("$[0].id").value(1L))
                 .andExpect(jsonPath("$[0].status").value("RECEIVED"));
     }
+
+    // GIVEN eine nicht existierende Dokumenten-ID beim Abrufen des Verlaufs
+    // WHEN GET /api/documents/{id}/history aufgerufen wird
+    // THEN liefert der Controller 400 Bad Request
+    @Test
+    void getHistoryForDocument_WithNonExistingDocumentId_ReturnsBadRequest() throws Exception {
+        when(documentStatusHistoryService.getHistoryByDocumentId(999L))
+                .thenThrow(new BusinessLayerException("Document with id 999 not found"));
+
+        mockMvc.perform(get("/api/documents/999/history"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("Bad Request"))
+                .andExpect(jsonPath("$.message").value("Document with id 999 not found"));
+    }
+
+    // --- Action 2: changeDocumentStatus ---
 
     // GIVEN eine gültige Statusänderungsanforderung
     // WHEN POST /api/documents/{id}/status aufgerufen wird
@@ -142,6 +161,29 @@ class DocumentStatusHistoryControllerTest {
                 .andExpect(status().isBadRequest());
     }
 
+    // GIVEN eine unzulässige Status-Transition in der Geschäftslogik
+    // WHEN POST /api/documents/{id}/status aufgerufen wird
+    // THEN liefert der Controller 400 Bad Request
+    @Test
+    void changeDocumentStatus_WithIllegalTransition_ReturnsBadRequest() throws Exception {
+        DocumentStatusChangeRequestDto request = DocumentStatusChangeRequestDto.builder()
+                .status(DocumentStatus.COMPLETED)
+                .changedBy("worker")
+                .build();
+
+        when(documentStatusHistoryService.changeStatus(eq(10L), eq(DocumentStatus.COMPLETED), eq("worker"), any()))
+                .thenThrow(new BusinessLayerException("Illegal status transition from RECEIVED to COMPLETED"));
+
+        mockMvc.perform(post("/api/documents/10/status")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("Bad Request"))
+                .andExpect(jsonPath("$.message").value("Illegal status transition from RECEIVED to COMPLETED"));
+    }
+
+    // --- Action 3: getHistoryById ---
+
     // GIVEN eine gültige Verlaufs-ID
     // WHEN GET /api/documents/status-history/{id} aufgerufen wird
     // THEN liefert der Controller 200 OK und das DTO
@@ -168,5 +210,19 @@ class DocumentStatusHistoryControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(5L))
                 .andExpect(jsonPath("$.status").value("REVIEW_PENDING"));
+    }
+
+    // GIVEN eine nicht existierende Verlaufs-ID
+    // WHEN GET /api/documents/status-history/{id} aufgerufen wird
+    // THEN liefert der Controller 400 Bad Request
+    @Test
+    void getHistoryById_WithNonExistingId_ReturnsBadRequest() throws Exception {
+        when(documentStatusHistoryService.findById(888L))
+                .thenThrow(new BusinessLayerException("DocumentStatusHistory with id 888 not found"));
+
+        mockMvc.perform(get("/api/documents/status-history/888"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("Bad Request"))
+                .andExpect(jsonPath("$.message").value("DocumentStatusHistory with id 888 not found"));
     }
 }

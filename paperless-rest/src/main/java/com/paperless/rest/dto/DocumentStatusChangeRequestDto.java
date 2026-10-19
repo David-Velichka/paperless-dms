@@ -27,4 +27,13 @@ public class DocumentStatusChangeRequestDto {
 
     @Size(max = 500, message = "Comment must not exceed 500 characters")
     private String comment;
+
+    public DocumentStatus getStatus() { return status; }
+    public void setStatus(DocumentStatus status) { this.status = status; }
+
+    public String getChangedBy() { return changedBy; }
+    public void setChangedBy(String changedBy) { this.changedBy = changedBy; }
+
+    public String getComment() { return comment; }
+    public void setComment(String comment) { this.comment = comment; }
 }

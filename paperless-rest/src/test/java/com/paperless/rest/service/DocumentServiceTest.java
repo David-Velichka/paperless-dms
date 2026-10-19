@@ -6,6 +6,7 @@ import com.paperless.rest.exception.BusinessLayerException;
 import com.paperless.rest.mapper.DocumentMapper;
 import com.paperless.rest.service.impl.DocumentServiceImpl;
 import com.paperless.rest.service.model.DocumentModel;
+import com.paperless.rest.service.validation.DocumentModelValidator;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -31,6 +32,9 @@ class DocumentServiceTest {
     @Mock
     private DocumentStatusHistoryService documentStatusHistoryService;
 
+    @Mock
+    private DocumentModelValidator documentModelValidator;
+
     @InjectMocks
     private DocumentServiceImpl documentService;
 
@@ -55,6 +59,7 @@ class DocumentServiceTest {
     // THEN wird das Modell über das Repository gespeichert und zurückgegeben
     @Test
     void save_WithValidModel_ReturnsSavedModel() {
+        doNothing().when(documentModelValidator).validateOrThrow(sampleModel);
         when(documentMapper.toEntity(sampleModel)).thenReturn(sampleEntity);
         when(documentRepository.save(sampleEntity)).thenReturn(sampleEntity);
         when(documentMapper.toModel(sampleEntity)).thenReturn(sampleModel);
@@ -64,6 +69,7 @@ class DocumentServiceTest {
         assertNotNull(result);
         assertEquals(1L, result.getId());
         assertEquals("Test Invoice", result.getTitle());
+        verify(documentModelValidator, times(1)).validateOrThrow(sampleModel);
         verify(documentRepository, times(1)).save(sampleEntity);
     }
 
@@ -78,10 +84,12 @@ class DocumentServiceTest {
 
     // GIVEN ein DocumentModel ohne Titel
     // WHEN save im Service aufgerufen wird
-    // THEN wird eine BusinessLayerException geworfen
+    // THEN wird eine BusinessLayerException durch die Validierung geworfen
     @Test
     void save_WithBlankTitle_ThrowsBusinessLayerException() {
         DocumentModel invalid = DocumentModel.builder().title("   ").build();
+        doThrow(new BusinessLayerException("Validation failed for Document: Document title must not be blank"))
+                .when(documentModelValidator).validateOrThrow(invalid);
 
         assertThrows(BusinessLayerException.class, () -> documentService.save(invalid));
         verify(documentRepository, never()).save(any());
@@ -114,77 +122,101 @@ class DocumentServiceTest {
         verify(documentRepository, times(1)).findById(99L);
     }
 
-    // GIVEN vorhandene Dokumente in der Datenbank
-    // WHEN findAll im Service aufgerufen wird
+    // GIVEN eine Null-Dokument-ID
+    // WHEN findById aufgerufen wird
+    // THEN wird eine BusinessLayerException geworfen
+    @Test
+    void findById_WithNullId_ThrowsBusinessLayerException() {
+        assertThrows(BusinessLayerException.class, () -> documentService.findById(null));
+        verify(documentRepository, never()).findById(any());
+    }
+
+    // GIVEN existierende Dokumente in der Datenbank
+    // WHEN findAll aufgerufen wird
     // THEN wird eine Liste von DocumentModels zurückgegeben
     @Test
     void findAll_ReturnsAllDocuments() {
         when(documentRepository.findAll()).thenReturn(List.of(sampleEntity));
         when(documentMapper.toModelList(List.of(sampleEntity))).thenReturn(List.of(sampleModel));
 
-        List<DocumentModel> results = documentService.findAll();
+        List<DocumentModel> result = documentService.findAll();
 
-        assertEquals(1, results.size());
-        assertEquals("Test Invoice", results.getFirst().getTitle());
-        verify(documentRepository, times(1)).findAll();
+        assertNotNull(result);
+        assertEquals(1, result.size());
+        assertEquals("Test Invoice", result.get(0).getTitle());
     }
 
-    // GIVEN eine gültige Suchanfrage
-    // WHEN search im Service aufgerufen wird
-    // THEN werden passende Dokumente über das Repository gesucht und zurückgegeben
+    // GIVEN ein Suchbegriff
+    // WHEN search aufgerufen wird
+    // THEN werden passende Dokumente über das Repository gefiltert
     @Test
-    void search_WithValidQuery_ReturnsMatchingDocuments() {
+    void search_WithMatchingQuery_ReturnsFilteredDocuments() {
         when(documentRepository.findByTitleContainingIgnoreCase("Invoice")).thenReturn(List.of(sampleEntity));
         when(documentMapper.toModelList(List.of(sampleEntity))).thenReturn(List.of(sampleModel));
 
-        List<DocumentModel> results = documentService.search("Invoice");
+        List<DocumentModel> result = documentService.search("Invoice");
 
-        assertEquals(1, results.size());
+        assertNotNull(result);
+        assertEquals(1, result.size());
+        assertEquals("Test Invoice", result.get(0).getTitle());
         verify(documentRepository, times(1)).findByTitleContainingIgnoreCase("Invoice");
     }
 
-    // GIVEN eine leere Suchanfrage
-    // WHEN search im Service aufgerufen wird
+    // GIVEN ein leerer Suchbegriff
+    // WHEN search aufgerufen wird
     // THEN werden alle Dokumente zurückgegeben
     @Test
-    void search_WithBlankQuery_ReturnsAllDocuments() {
+    void search_WithBlankQuery_DelegatesToFindAll() {
         when(documentRepository.findAll()).thenReturn(List.of(sampleEntity));
         when(documentMapper.toModelList(List.of(sampleEntity))).thenReturn(List.of(sampleModel));
 
-        List<DocumentModel> results = documentService.search("   ");
+        List<DocumentModel> result = documentService.search("  ");
 
-        assertEquals(1, results.size());
+        assertNotNull(result);
+        assertEquals(1, result.size());
         verify(documentRepository, times(1)).findAll();
     }
 
     // GIVEN eine existierende Dokument-ID
-    // WHEN deleteById im Service aufgerufen wird
-    // THEN wird das Dokument im Repository gelöscht
+    // WHEN deleteById aufgerufen wird
+    // THEN werden Verläufe und das Dokument gelöscht
     @Test
-    void deleteById_WhenExists_DeletesDocument() {
+    void deleteById_WhenExists_DeletesDocumentAndHistory() {
         when(documentRepository.existsById(1L)).thenReturn(true);
+        doNothing().when(documentStatusHistoryService).deleteByDocumentId(1L);
+        doNothing().when(documentRepository).deleteById(1L);
 
-        documentService.deleteById(1L);
+        assertDoesNotThrow(() -> documentService.deleteById(1L));
 
+        verify(documentStatusHistoryService, times(1)).deleteByDocumentId(1L);
         verify(documentRepository, times(1)).deleteById(1L);
     }
 
-    // GIVEN eine nicht existierende Dokument-ID zum Löschen
-    // WHEN deleteById im Service aufgerufen wird
+    // GIVEN eine nicht existierende Dokument-ID
+    // WHEN deleteById aufgerufen wird
     // THEN wird eine BusinessLayerException geworfen
     @Test
-    void deleteById_WhenNotExists_ThrowsBusinessLayerException() {
+    void deleteById_WhenNotFound_ThrowsBusinessLayerException() {
         when(documentRepository.existsById(99L)).thenReturn(false);
 
         assertThrows(BusinessLayerException.class, () -> documentService.deleteById(99L));
-        verify(documentRepository, never()).deleteById(anyLong());
+        verify(documentRepository, never()).deleteById(any());
     }
 
-    // GIVEN ein DocumentModel und binäre Dateidaten
-    // WHEN uploadDocument aufgerufen wird
-    // THEN wird die Entität persistiert und das gespeicherte Modell zurückgegeben
+    // GIVEN eine Null-Dokument-ID zum Löschen
+    // WHEN deleteById aufgerufen wird
+    // THEN wird eine BusinessLayerException geworfen
     @Test
-    void uploadDocument_SavesEntityAndReturnsModel() {
+    void deleteById_WithNullId_ThrowsBusinessLayerException() {
+        assertThrows(BusinessLayerException.class, () -> documentService.deleteById(null));
+        verify(documentRepository, never()).deleteById(any());
+    }
+
+    // GIVEN ein gültiges DocumentModel und Dateiinhalt
+    // WHEN uploadDocument aufgerufen wird
+    // THEN wird das Dokument validiert, initialisiert und gespeichert
+    @Test
+    void uploadDocument_WithValidData_SavesAndCreatesInitialHistory() {
         DocumentModel inputModel = DocumentModel.builder()
                 .title("Upload Test")
                 .originalFilename("test.pdf")
@@ -215,6 +247,7 @@ class DocumentServiceTest {
                 .fileSize(100L)
                 .build();
 
+        doNothing().when(documentModelValidator).validateOrThrow(inputModel);
         when(documentMapper.toEntity(inputModel)).thenReturn(entityToSave);
         when(documentRepository.save(entityToSave)).thenReturn(savedEntity);
         when(documentMapper.toModel(savedEntity)).thenReturn(expectedModel);
@@ -224,6 +257,7 @@ class DocumentServiceTest {
         assertNotNull(result);
         assertEquals(10L, result.getId());
         assertEquals("Upload Test", result.getTitle());
+        verify(documentModelValidator, times(1)).validateOrThrow(inputModel);
         verify(documentRepository, times(1)).save(entityToSave);
     }
 
@@ -247,12 +281,14 @@ class DocumentServiceTest {
         verify(documentRepository, never()).save(any());
     }
 
-    // GIVEN ein DocumentModel mit leerem Titel beim Upload
+    // GIVEN ein DocumentModel mit Validierungsfehler beim Upload
     // WHEN uploadDocument aufgerufen wird
     // THEN wird eine BusinessLayerException geworfen
     @Test
-    void uploadDocument_WithBlankTitle_ThrowsBusinessLayerException() {
+    void uploadDocument_WithValidationFailure_ThrowsBusinessLayerException() {
         DocumentModel model = DocumentModel.builder().title(" ").build();
+        doThrow(new BusinessLayerException("Validation failed for Document: Document title must not be blank"))
+                .when(documentModelValidator).validateOrThrow(model);
 
         assertThrows(BusinessLayerException.class, () -> documentService.uploadDocument(model, "content".getBytes()));
         verify(documentRepository, never()).save(any());
