@@ -14,6 +14,7 @@ import java.time.OffsetDateTime;
  */
 @Entity
 @Table(name = "documents")
+@EntityListeners(DocumentEntityListener.class)
 @Data
 @Builder
 @NoArgsConstructor
@@ -23,6 +24,10 @@ public class DocumentEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+
+    @Version
+    @Column(name = "version")
+    private Long version;
 
     @Column(nullable = false)
     private String title;
@@ -57,6 +62,9 @@ public class DocumentEntity {
 
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
+
+    public Long getVersion() { return version; }
+    public void setVersion(Long version) { this.version = version; }
 
     public String getTitle() { return title; }
     public void setTitle(String title) { this.title = title; }

@@ -247,4 +247,24 @@ class DocumentControllerTest {
                 .andExpect(jsonPath("$.error").value("Bad Request"))
                 .andExpect(jsonPath("$.message").value("Cannot delete: Document with id 99 does not exist"));
     }
+
+    // GIVEN ein nebenläufiger Änderungskonflikt (Optimistic Locking Failure)
+    // WHEN POST /api/documents aufgerufen wird und die DB einen Versionskonflikt meldet
+    // THEN wird der HTTP-Status 409 Conflict und eine aussagekräftige Fehlermeldung zurückgegeben
+    @Test
+    void createDocument_WhenConcurrentConflictOccurs_ReturnsConflict() throws Exception {
+        DocumentDto requestDto = DocumentDto.builder().title("Concurrent Invoice").build();
+        DocumentModel model = DocumentModel.builder().title("Concurrent Invoice").build();
+
+        when(documentMapper.toModel(any(DocumentDto.class))).thenReturn(model);
+        when(documentService.save(any(DocumentModel.class)))
+                .thenThrow(new org.springframework.orm.ObjectOptimisticLockingFailureException(DocumentModel.class, 1L));
+
+        mockMvc.perform(post("/api/documents")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(requestDto)))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.error").value("Conflict"))
+                .andExpect(jsonPath("$.message").value("The document was modified concurrently by another transaction. Please refresh and try again."));
+    }
 }

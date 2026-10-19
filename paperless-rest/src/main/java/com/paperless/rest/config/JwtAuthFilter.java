@@ -64,6 +64,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
 
         String username = jwtService.extractUsername(token);
         String role = jwtService.extractRole(token);
+        log.debug("Authenticated user '{}' with role '{}' for request path {}", username, role, path);
         request.setAttribute("authenticatedUser", username);
         request.setAttribute("authenticatedRole", role);
 

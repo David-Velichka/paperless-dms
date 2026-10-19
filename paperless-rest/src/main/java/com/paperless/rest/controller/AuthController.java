@@ -33,6 +33,7 @@ public class AuthController {
     public ResponseEntity<UserDto> getCurrentUser(
             @RequestHeader(value = "Authorization", required = false) String authHeader,
             jakarta.servlet.http.HttpServletRequest request) {
+        log.info("REST request to get current authenticated user");
         String authenticatedUser = (String) request.getAttribute("authenticatedUser");
         String authenticatedRole = (String) request.getAttribute("authenticatedRole");
 

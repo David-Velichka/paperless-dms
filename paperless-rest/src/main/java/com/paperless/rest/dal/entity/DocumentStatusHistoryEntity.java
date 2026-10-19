@@ -14,6 +14,7 @@ import java.time.OffsetDateTime;
  */
 @Entity
 @Table(name = "document_status_histories")
+@EntityListeners(DocumentStatusHistoryEntityListener.class)
 @Data
 @Builder
 @NoArgsConstructor

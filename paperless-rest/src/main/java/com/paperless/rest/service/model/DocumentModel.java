@@ -24,6 +24,7 @@ import java.time.OffsetDateTime;
 public class DocumentModel {
 
     private Long id;
+    private Long version;
 
     @NotBlank(message = "Document title must not be blank")
     @Size(max = 255, message = "Document title must not exceed 255 characters")
@@ -54,6 +55,9 @@ public class DocumentModel {
 
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
+
+    public Long getVersion() { return version; }
+    public void setVersion(Long version) { this.version = version; }
 
     public String getTitle() { return title; }
     public void setTitle(String title) { this.title = title; }

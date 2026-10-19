@@ -2,6 +2,7 @@ export type DocumentStatus = 'RECEIVED' | 'PROCESSING' | 'REVIEW_PENDING' | 'COM
 
 export interface DocumentItem {
   id: number;
+  version?: number;
   title: string | null;
   originalFilename: string;
   fileSize: number;
