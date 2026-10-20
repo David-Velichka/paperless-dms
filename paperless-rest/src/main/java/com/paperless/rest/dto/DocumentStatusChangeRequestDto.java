@@ -6,13 +6,15 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
-import lombok.Data;
+import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 /**
  * DTO for requesting a document status transition.
  */
-@Data
+@Getter
+@Setter
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
@@ -27,13 +29,4 @@ public class DocumentStatusChangeRequestDto {
 
     @Size(max = 500, message = "Comment must not exceed 500 characters")
     private String comment;
-
-    public DocumentStatus getStatus() { return status; }
-    public void setStatus(DocumentStatus status) { this.status = status; }
-
-    public String getChangedBy() { return changedBy; }
-    public void setChangedBy(String changedBy) { this.changedBy = changedBy; }
-
-    public String getComment() { return comment; }
-    public void setComment(String comment) { this.comment = comment; }
 }

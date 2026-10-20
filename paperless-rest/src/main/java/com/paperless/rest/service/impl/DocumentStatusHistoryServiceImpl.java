@@ -2,10 +2,10 @@ package com.paperless.rest.service.impl;
 
 import com.paperless.rest.dal.entity.DocumentEntity;
 import com.paperless.rest.dal.entity.DocumentStatusHistoryEntity;
+import com.paperless.rest.dal.mapper.DocumentEntityMapper;
 import com.paperless.rest.dal.repository.DocumentRepository;
 import com.paperless.rest.dal.repository.DocumentStatusHistoryRepository;
 import com.paperless.rest.exception.BusinessLayerException;
-import com.paperless.rest.mapper.DocumentMapper;
 import com.paperless.rest.mapper.DocumentStatusHistoryMapper;
 import com.paperless.rest.service.DocumentStatusHistoryService;
 import com.paperless.rest.service.model.DocumentModel;
@@ -28,7 +28,7 @@ public class DocumentStatusHistoryServiceImpl implements DocumentStatusHistorySe
 
     private final DocumentRepository documentRepository;
     private final DocumentStatusHistoryRepository documentStatusHistoryRepository;
-    private final DocumentMapper documentMapper;
+    private final DocumentEntityMapper documentEntityMapper;
     private final DocumentStatusHistoryMapper documentStatusHistoryMapper;
     private final DocumentStatusHistoryModelValidator historyModelValidator;
 
@@ -44,7 +44,7 @@ public class DocumentStatusHistoryServiceImpl implements DocumentStatusHistorySe
         DocumentEntity documentEntity = documentRepository.findById(documentId)
                 .orElseThrow(() -> new BusinessLayerException("Document with id " + documentId + " not found"));
 
-        DocumentModel documentModel = documentMapper.toModel(documentEntity);
+        DocumentModel documentModel = documentEntityMapper.toModel(documentEntity);
         DocumentStatus previousStatus = documentModel.getCurrentStatus() != null ? documentModel.getCurrentStatus() : DocumentStatus.RECEIVED;
 
         log.info("Transitioning document {} status from {} to {} by {}", documentId, previousStatus, targetStatus, changedBy);
@@ -62,7 +62,7 @@ public class DocumentStatusHistoryServiceImpl implements DocumentStatusHistorySe
 
         historyModelValidator.validateOrThrow(historyModel);
 
-        documentMapper.updateEntityFromModel(documentModel, documentEntity);
+        documentEntity.setCurrentStatus(documentModel.getCurrentStatus());
         documentRepository.save(documentEntity);
 
         DocumentStatusHistoryEntity historyEntity = documentStatusHistoryMapper.toEntity(historyModel);

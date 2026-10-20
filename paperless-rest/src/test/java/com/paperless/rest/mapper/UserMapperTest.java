@@ -21,8 +21,8 @@ class UserMapperTest {
         UserDto dto = mapper.toDto(model);
 
         assertNotNull(dto);
-        assertEquals("admin", dto.getUsername());
-        assertEquals("ADMIN", dto.getRole());
+        assertEquals("admin", dto.username());
+        assertEquals("ADMIN", dto.role());
     }
 
     // GIVEN ein UserDto

@@ -5,7 +5,7 @@ import com.paperless.rest.dal.entity.DocumentStatusHistoryEntity;
 import com.paperless.rest.dal.repository.DocumentRepository;
 import com.paperless.rest.dal.repository.DocumentStatusHistoryRepository;
 import com.paperless.rest.exception.BusinessLayerException;
-import com.paperless.rest.mapper.DocumentMapper;
+import com.paperless.rest.dal.mapper.DocumentEntityMapper;
 import com.paperless.rest.mapper.DocumentStatusHistoryMapper;
 import com.paperless.rest.service.impl.DocumentStatusHistoryServiceImpl;
 import com.paperless.rest.service.model.DocumentModel;
@@ -37,7 +37,7 @@ class DocumentStatusHistoryServiceTest {
     private DocumentStatusHistoryRepository documentStatusHistoryRepository;
 
     @Mock
-    private DocumentMapper documentMapper;
+    private DocumentEntityMapper documentEntityMapper;
 
     @Mock
     private DocumentStatusHistoryMapper documentStatusHistoryMapper;
@@ -94,7 +94,7 @@ class DocumentStatusHistoryServiceTest {
     @Test
     void changeStatus_WithValidTransition_UpdatesStatusAndLogsHistory() {
         when(documentRepository.findById(1L)).thenReturn(Optional.of(sampleDocument));
-        when(documentMapper.toModel(sampleDocument)).thenReturn(sampleDocumentModel);
+        when(documentEntityMapper.toModel(sampleDocument)).thenReturn(sampleDocumentModel);
         doNothing().when(historyModelValidator).validateOrThrow(any(DocumentStatusHistoryModel.class));
         when(documentStatusHistoryMapper.toEntity(any(DocumentStatusHistoryModel.class))).thenReturn(sampleHistoryEntity);
         when(documentStatusHistoryRepository.save(any(DocumentStatusHistoryEntity.class))).thenReturn(sampleHistoryEntity);
@@ -148,10 +148,10 @@ class DocumentStatusHistoryServiceTest {
     @Test
     void changeStatus_WithIllegalTransition_ThrowsBusinessLayerException() {
         sampleDocument.setCurrentStatus(DocumentStatus.COMPLETED);
-        sampleDocumentModel.setCurrentStatus(DocumentStatus.COMPLETED);
+        sampleDocumentModel = sampleDocumentModel.toBuilder().currentStatus(DocumentStatus.COMPLETED).build();
 
         when(documentRepository.findById(1L)).thenReturn(Optional.of(sampleDocument));
-        when(documentMapper.toModel(sampleDocument)).thenReturn(sampleDocumentModel);
+        when(documentEntityMapper.toModel(sampleDocument)).thenReturn(sampleDocumentModel);
 
         assertThrows(BusinessLayerException.class,
                 () -> documentStatusHistoryService.changeStatus(1L, DocumentStatus.PROCESSING, "user", null));
@@ -164,7 +164,7 @@ class DocumentStatusHistoryServiceTest {
     @Test
     void changeStatus_WithValidationFailure_ThrowsBusinessLayerException() {
         when(documentRepository.findById(1L)).thenReturn(Optional.of(sampleDocument));
-        when(documentMapper.toModel(sampleDocument)).thenReturn(sampleDocumentModel);
+        when(documentEntityMapper.toModel(sampleDocument)).thenReturn(sampleDocumentModel);
         doThrow(new BusinessLayerException("Validation failed for StatusHistory: Changed by actor must not be blank"))
                 .when(historyModelValidator).validateOrThrow(any(DocumentStatusHistoryModel.class));
 

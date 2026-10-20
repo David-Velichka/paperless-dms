@@ -1,7 +1,7 @@
 package com.paperless.rest.controller;
 
 import com.paperless.rest.dto.DocumentDto;
-import com.paperless.rest.mapper.DocumentMapper;
+import com.paperless.rest.mapper.DocumentDtoMapper;
 import com.paperless.rest.service.DocumentService;
 import com.paperless.rest.service.model.DocumentModel;
 import jakarta.validation.Valid;
@@ -22,35 +22,35 @@ import java.util.List;
 public class DocumentController {
 
     private final DocumentService documentService;
-    private final DocumentMapper documentMapper;
+    private final DocumentDtoMapper documentDtoMapper;
 
     @GetMapping
     public ResponseEntity<List<DocumentDto>> getAllDocuments() {
         log.info("REST request to get all documents");
         List<DocumentModel> models = documentService.findAll();
-        return ResponseEntity.ok(documentMapper.toDtoList(models));
+        return ResponseEntity.ok(documentDtoMapper.toDtoList(models));
     }
 
     @GetMapping("/{id}")
     public ResponseEntity<DocumentDto> getDocumentById(@PathVariable Long id) {
         log.info("REST request to get document: {}", id);
         DocumentModel model = documentService.findById(id);
-        return ResponseEntity.ok(documentMapper.toDto(model));
+        return ResponseEntity.ok(documentDtoMapper.toDto(model));
     }
 
     @GetMapping("/search")
     public ResponseEntity<List<DocumentDto>> searchDocuments(@RequestParam("query") String query) {
         log.info("REST request to search documents with query: {}", query);
         List<DocumentModel> results = documentService.search(query);
-        return ResponseEntity.ok(documentMapper.toDtoList(results));
+        return ResponseEntity.ok(documentDtoMapper.toDtoList(results));
     }
 
     @PostMapping
     public ResponseEntity<DocumentDto> createDocument(@Valid @RequestBody DocumentDto dto) {
         log.info("REST request to create document metadata: {}", dto.getTitle());
-        DocumentModel model = documentMapper.toModel(dto);
+        DocumentModel model = documentDtoMapper.toModel(dto);
         DocumentModel saved = documentService.save(model);
-        return ResponseEntity.status(HttpStatus.CREATED).body(documentMapper.toDto(saved));
+        return ResponseEntity.status(HttpStatus.CREATED).body(documentDtoMapper.toDto(saved));
     }
 
     // Multipart post
@@ -77,7 +77,7 @@ public class DocumentController {
                 .build();
 
         DocumentModel saved = documentService.uploadDocument(model, file.getBytes());
-        return ResponseEntity.status(HttpStatus.CREATED).body(documentMapper.toDto(saved));
+        return ResponseEntity.status(HttpStatus.CREATED).body(documentDtoMapper.toDto(saved));
     }
 
     @DeleteMapping("/{id}")

@@ -1,9 +1,9 @@
 package com.paperless.rest.service.impl;
 
 import com.paperless.rest.dal.entity.DocumentEntity;
+import com.paperless.rest.dal.mapper.DocumentEntityMapper;
 import com.paperless.rest.dal.repository.DocumentRepository;
 import com.paperless.rest.exception.BusinessLayerException;
-import com.paperless.rest.mapper.DocumentMapper;
 import com.paperless.rest.service.DocumentService;
 import com.paperless.rest.service.DocumentStatusHistoryService;
 import com.paperless.rest.service.model.DocumentModel;
@@ -23,7 +23,7 @@ import java.util.List;
 public class DocumentServiceImpl implements DocumentService {
 
     private final DocumentRepository documentRepository;
-    private final DocumentMapper documentMapper;
+    private final DocumentEntityMapper documentEntityMapper;
     private final DocumentStatusHistoryService documentStatusHistoryService;
     private final DocumentModelValidator documentModelValidator;
 
@@ -35,7 +35,7 @@ public class DocumentServiceImpl implements DocumentService {
         documentModelValidator.validateOrThrow(documentModel);
 
         log.info("Saving document model: {}", documentModel.getTitle());
-        DocumentEntity entity = documentMapper.toEntity(documentModel);
+        DocumentEntity entity = documentEntityMapper.toEntity(documentModel);
         boolean isNew = (entity.getId() == null);
         if (isNew && entity.getCurrentStatus() == null) {
             entity.setCurrentStatus(DocumentStatus.RECEIVED);
@@ -44,7 +44,7 @@ public class DocumentServiceImpl implements DocumentService {
         if (isNew) {
             documentStatusHistoryService.createInitialHistory(saved.getId(), "system", "Document metadata created");
         }
-        return documentMapper.toModel(saved);
+        return documentEntityMapper.toModel(saved);
     }
 
     @Override
@@ -55,7 +55,7 @@ public class DocumentServiceImpl implements DocumentService {
         }
         log.debug("Finding document by id: {}", id);
         return documentRepository.findById(id)
-                .map(documentMapper::toModel)
+                .map(documentEntityMapper::toModel)
                 .orElseThrow(() -> new BusinessLayerException("Document with id " + id + " not found"));
     }
 
@@ -63,7 +63,7 @@ public class DocumentServiceImpl implements DocumentService {
     @Transactional(readOnly = true)
     public List<DocumentModel> findAll() {
         log.debug("Finding all documents");
-        return documentMapper.toModelList(documentRepository.findAll());
+        return documentEntityMapper.toModelList(documentRepository.findAll());
     }
 
     @Override
@@ -74,7 +74,7 @@ public class DocumentServiceImpl implements DocumentService {
             return findAll();
         }
         List<DocumentEntity> entities = documentRepository.findByTitleContainingIgnoreCase(query);
-        return documentMapper.toModelList(entities);
+        return documentEntityMapper.toModelList(entities);
     }
 
     @Override
@@ -100,16 +100,16 @@ public class DocumentServiceImpl implements DocumentService {
         }
         documentModelValidator.validateOrThrow(documentModel);
 
-        log.info("Processing upload for document: {}", documentModel.getTitle());
-        DocumentEntity entity = documentMapper.toEntity(documentModel);
+        log.info("Uploading document: {} (size: {} bytes)", documentModel.getTitle(), content.length);
+
+        DocumentEntity entity = documentEntityMapper.toEntity(documentModel);
         if (entity.getCurrentStatus() == null) {
             entity.setCurrentStatus(DocumentStatus.RECEIVED);
         }
         DocumentEntity saved = documentRepository.save(entity);
-        documentStatusHistoryService.createInitialHistory(saved.getId(), "uploader", "Document uploaded");
-        DocumentModel savedModel = documentMapper.toModel(saved);
 
-        log.info("Document successfully initiated with id: {}", saved.getId());
-        return savedModel;
+        documentStatusHistoryService.createInitialHistory(saved.getId(), "uploader", "Document file uploaded");
+
+        return documentEntityMapper.toModel(saved);
     }
 }

@@ -1,7 +1,7 @@
 package com.paperless.rest.controller;
 
 import com.paperless.rest.config.SecurityFilterConfig;
-import com.paperless.rest.mapper.DocumentMapper;
+import com.paperless.rest.mapper.DocumentDtoMapper;
 import com.paperless.rest.service.DocumentService;
 import com.paperless.rest.service.JwtService;
 import org.junit.jupiter.api.Test;
@@ -38,7 +38,7 @@ class JwtAuthFilterIntegrationTest {
     private DocumentService documentService;
 
     @MockitoBean
-    private DocumentMapper documentMapper;
+    private DocumentDtoMapper documentDtoMapper;
 
     // GIVEN ein geschützter Endpunkt ohne Authorization-Header
     // WHEN GET /api/documents aufgerufen wird
@@ -70,7 +70,7 @@ class JwtAuthFilterIntegrationTest {
     void getDocuments_WithValidBearerToken_ReturnsOk() throws Exception {
         String token = jwtService.generateToken("admin", "ADMIN");
         when(documentService.findAll()).thenReturn(Collections.emptyList());
-        when(documentMapper.toDtoList(Collections.emptyList())).thenReturn(Collections.emptyList());
+        when(documentDtoMapper.toDtoList(Collections.emptyList())).thenReturn(Collections.emptyList());
 
         mockMvc.perform(get("/api/documents")
                         .header("Authorization", "Bearer " + token))

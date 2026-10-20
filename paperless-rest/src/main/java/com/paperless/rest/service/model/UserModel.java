@@ -4,14 +4,14 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
-import lombok.Data;
+import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 /**
  * Pure Business Layer Domain Model for User.
  * Enforces validation annotations verified by UserModelValidator.
  */
-@Data
+@Getter
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
@@ -24,10 +24,4 @@ public class UserModel {
     @NotBlank(message = "Role must not be blank")
     @Size(max = 20, message = "Role must not exceed 20 characters")
     private String role;
-
-    public String getUsername() { return username; }
-    public void setUsername(String username) { this.username = username; }
-
-    public String getRole() { return role; }
-    public void setRole(String role) { this.role = role; }
 }

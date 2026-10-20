@@ -4,8 +4,9 @@ import com.paperless.rest.service.model.DocumentStatus;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
-import lombok.Data;
+import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 import java.time.OffsetDateTime;
 
@@ -15,7 +16,8 @@ import java.time.OffsetDateTime;
 @Entity
 @Table(name = "document_status_histories")
 @EntityListeners(DocumentStatusHistoryEntityListener.class)
-@Data
+@Getter
+@Setter
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
@@ -45,31 +47,23 @@ public class DocumentStatusHistoryEntity {
     @Column(length = 500)
     private String comment;
 
-    public Long getId() { return id; }
-    public void setId(Long id) { this.id = id; }
-
-    public Long getDocumentId() { return documentId; }
-    public void setDocumentId(Long documentId) { this.documentId = documentId; }
-
-    public DocumentStatus getStatus() { return status; }
-    public void setStatus(DocumentStatus status) { this.status = status; }
-
-    public DocumentStatus getPreviousStatus() { return previousStatus; }
-    public void setPreviousStatus(DocumentStatus previousStatus) { this.previousStatus = previousStatus; }
-
-    public String getChangedBy() { return changedBy; }
-    public void setChangedBy(String changedBy) { this.changedBy = changedBy; }
-
-    public OffsetDateTime getTimestamp() { return timestamp; }
-    public void setTimestamp(OffsetDateTime timestamp) { this.timestamp = timestamp; }
-
-    public String getComment() { return comment; }
-    public void setComment(String comment) { this.comment = comment; }
-
     @PrePersist
     protected void onCreate() {
         if (timestamp == null) {
             timestamp = OffsetDateTime.now();
         }
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        DocumentStatusHistoryEntity that = (DocumentStatusHistoryEntity) o;
+        return id != null && id.equals(that.id);
+    }
+
+    @Override
+    public int hashCode() {
+        return getClass().hashCode();
     }
 }

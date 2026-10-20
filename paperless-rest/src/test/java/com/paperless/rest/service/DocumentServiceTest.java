@@ -3,7 +3,7 @@ package com.paperless.rest.service;
 import com.paperless.rest.dal.entity.DocumentEntity;
 import com.paperless.rest.dal.repository.DocumentRepository;
 import com.paperless.rest.exception.BusinessLayerException;
-import com.paperless.rest.mapper.DocumentMapper;
+import com.paperless.rest.dal.mapper.DocumentEntityMapper;
 import com.paperless.rest.service.impl.DocumentServiceImpl;
 import com.paperless.rest.service.model.DocumentModel;
 import com.paperless.rest.service.validation.DocumentModelValidator;
@@ -27,7 +27,7 @@ class DocumentServiceTest {
     private DocumentRepository documentRepository;
 
     @Mock
-    private DocumentMapper documentMapper;
+    private DocumentEntityMapper documentEntityMapper;
 
     @Mock
     private DocumentStatusHistoryService documentStatusHistoryService;
@@ -60,9 +60,9 @@ class DocumentServiceTest {
     @Test
     void save_WithValidModel_ReturnsSavedModel() {
         doNothing().when(documentModelValidator).validateOrThrow(sampleModel);
-        when(documentMapper.toEntity(sampleModel)).thenReturn(sampleEntity);
+        when(documentEntityMapper.toEntity(sampleModel)).thenReturn(sampleEntity);
         when(documentRepository.save(sampleEntity)).thenReturn(sampleEntity);
-        when(documentMapper.toModel(sampleEntity)).thenReturn(sampleModel);
+        when(documentEntityMapper.toModel(sampleEntity)).thenReturn(sampleModel);
 
         DocumentModel result = documentService.save(sampleModel);
 
@@ -101,7 +101,7 @@ class DocumentServiceTest {
     @Test
     void findById_WhenExists_ReturnsDocumentModel() {
         when(documentRepository.findById(1L)).thenReturn(Optional.of(sampleEntity));
-        when(documentMapper.toModel(sampleEntity)).thenReturn(sampleModel);
+        when(documentEntityMapper.toModel(sampleEntity)).thenReturn(sampleModel);
 
         DocumentModel result = documentService.findById(1L);
 
@@ -137,7 +137,7 @@ class DocumentServiceTest {
     @Test
     void findAll_ReturnsAllDocuments() {
         when(documentRepository.findAll()).thenReturn(List.of(sampleEntity));
-        when(documentMapper.toModelList(List.of(sampleEntity))).thenReturn(List.of(sampleModel));
+        when(documentEntityMapper.toModelList(List.of(sampleEntity))).thenReturn(List.of(sampleModel));
 
         List<DocumentModel> result = documentService.findAll();
 
@@ -152,7 +152,7 @@ class DocumentServiceTest {
     @Test
     void search_WithMatchingQuery_ReturnsFilteredDocuments() {
         when(documentRepository.findByTitleContainingIgnoreCase("Invoice")).thenReturn(List.of(sampleEntity));
-        when(documentMapper.toModelList(List.of(sampleEntity))).thenReturn(List.of(sampleModel));
+        when(documentEntityMapper.toModelList(List.of(sampleEntity))).thenReturn(List.of(sampleModel));
 
         List<DocumentModel> result = documentService.search("Invoice");
 
@@ -168,7 +168,7 @@ class DocumentServiceTest {
     @Test
     void search_WithBlankQuery_DelegatesToFindAll() {
         when(documentRepository.findAll()).thenReturn(List.of(sampleEntity));
-        when(documentMapper.toModelList(List.of(sampleEntity))).thenReturn(List.of(sampleModel));
+        when(documentEntityMapper.toModelList(List.of(sampleEntity))).thenReturn(List.of(sampleModel));
 
         List<DocumentModel> result = documentService.search("  ");
 
@@ -248,9 +248,9 @@ class DocumentServiceTest {
                 .build();
 
         doNothing().when(documentModelValidator).validateOrThrow(inputModel);
-        when(documentMapper.toEntity(inputModel)).thenReturn(entityToSave);
+        when(documentEntityMapper.toEntity(inputModel)).thenReturn(entityToSave);
         when(documentRepository.save(entityToSave)).thenReturn(savedEntity);
-        when(documentMapper.toModel(savedEntity)).thenReturn(expectedModel);
+        when(documentEntityMapper.toModel(savedEntity)).thenReturn(expectedModel);
 
         DocumentModel result = documentService.uploadDocument(inputModel, "dummy content".getBytes());
 

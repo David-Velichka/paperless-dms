@@ -3,7 +3,7 @@ package com.paperless.rest.controller;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.paperless.rest.dto.DocumentDto;
 import com.paperless.rest.exception.BusinessLayerException;
-import com.paperless.rest.mapper.DocumentMapper;
+import com.paperless.rest.mapper.DocumentDtoMapper;
 import com.paperless.rest.service.DocumentService;
 import com.paperless.rest.service.model.DocumentModel;
 import org.junit.jupiter.api.Test;
@@ -33,7 +33,7 @@ class DocumentControllerTest {
     private DocumentService documentService;
 
     @MockitoBean
-    private DocumentMapper documentMapper;
+    private DocumentDtoMapper documentDtoMapper;
 
     // --- Action 1: getAllDocuments ---
 
@@ -46,7 +46,7 @@ class DocumentControllerTest {
         DocumentDto dto = DocumentDto.builder().id(1L).title("Sample").build();
 
         when(documentService.findAll()).thenReturn(List.of(model));
-        when(documentMapper.toDtoList(List.of(model))).thenReturn(List.of(dto));
+        when(documentDtoMapper.toDtoList(List.of(model))).thenReturn(List.of(dto));
 
         mockMvc.perform(get("/api/documents"))
                 .andExpect(status().isOk())
@@ -77,7 +77,7 @@ class DocumentControllerTest {
         DocumentDto dto = DocumentDto.builder().id(10L).title("Document 10").build();
 
         when(documentService.findById(10L)).thenReturn(model);
-        when(documentMapper.toDto(model)).thenReturn(dto);
+        when(documentDtoMapper.toDto(model)).thenReturn(dto);
 
         mockMvc.perform(get("/api/documents/10"))
                 .andExpect(status().isOk())
@@ -109,7 +109,7 @@ class DocumentControllerTest {
         DocumentDto dto = DocumentDto.builder().id(1L).title("Financial Report").build();
 
         when(documentService.search("Report")).thenReturn(List.of(model));
-        when(documentMapper.toDtoList(List.of(model))).thenReturn(List.of(dto));
+        when(documentDtoMapper.toDtoList(List.of(model))).thenReturn(List.of(dto));
 
         mockMvc.perform(get("/api/documents/search").param("query", "Report"))
                 .andExpect(status().isOk())
@@ -141,9 +141,9 @@ class DocumentControllerTest {
         DocumentModel savedModel = DocumentModel.builder().id(5L).title("New Invoice").build();
         DocumentDto savedDto = DocumentDto.builder().id(5L).title("New Invoice").build();
 
-        when(documentMapper.toModel(any(DocumentDto.class))).thenReturn(model);
+        when(documentDtoMapper.toModel(any(DocumentDto.class))).thenReturn(model);
         when(documentService.save(model)).thenReturn(savedModel);
-        when(documentMapper.toDto(savedModel)).thenReturn(savedDto);
+        when(documentDtoMapper.toDto(savedModel)).thenReturn(savedDto);
 
         mockMvc.perform(post("/api/documents")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -195,7 +195,7 @@ class DocumentControllerTest {
 
         when(documentService.uploadDocument(any(DocumentModel.class), any(byte[].class)))
                 .thenReturn(savedModel);
-        when(documentMapper.toDto(savedModel)).thenReturn(savedDto);
+        when(documentDtoMapper.toDto(savedModel)).thenReturn(savedDto);
 
         mockMvc.perform(multipart("/api/documents/upload")
                         .file(file)
@@ -256,7 +256,7 @@ class DocumentControllerTest {
         DocumentDto requestDto = DocumentDto.builder().title("Concurrent Invoice").build();
         DocumentModel model = DocumentModel.builder().title("Concurrent Invoice").build();
 
-        when(documentMapper.toModel(any(DocumentDto.class))).thenReturn(model);
+        when(documentDtoMapper.toModel(any(DocumentDto.class))).thenReturn(model);
         when(documentService.save(any(DocumentModel.class)))
                 .thenThrow(new org.springframework.orm.ObjectOptimisticLockingFailureException(DocumentModel.class, 1L));
 
