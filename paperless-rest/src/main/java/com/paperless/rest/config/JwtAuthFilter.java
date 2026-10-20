@@ -41,6 +41,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         // Allow public paths without authentication
         if ("/api/v1/auth/login".equals(path)
                 || "/api/auth/login".equals(path)
+                || "/api/v1/health".equals(path)
                 || path.startsWith("/swagger-ui")
                 || path.startsWith("/v3/api-docs")
                 || path.startsWith("/api-docs")

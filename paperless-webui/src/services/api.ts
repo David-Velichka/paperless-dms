@@ -111,8 +111,8 @@ export const API = {
 
   async checkHealth(): Promise<boolean> {
     try {
-      const res = await fetch(`${this.BASE_URL}/documents`, { method: 'GET' });
-      return res.ok || res.status === 401;
+      const res = await fetch(`${this.BASE_URL}/health`, { method: 'GET' });
+      return res.ok;
     } catch {
       return false;
     }

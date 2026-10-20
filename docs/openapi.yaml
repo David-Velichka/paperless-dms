@@ -11,6 +11,25 @@ servers:
     description: Via Nginx Reverse Proxy
 
 paths:
+  /api/v1/health:
+    get:
+      summary: Health check endpoint
+      description: Returns server operational status without authentication
+      operationId: healthCheck
+      tags:
+        - Health
+      responses:
+        '200':
+          description: Service is healthy and operational
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: UP
+
   /api/v1/auth/login:
     post:
       summary: Authenticate user credentials and receive a JWT token

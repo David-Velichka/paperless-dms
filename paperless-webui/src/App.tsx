@@ -56,9 +56,18 @@ export const App: React.FC = () => {
     }
   }, [addToast]);
 
+  // Debounce search query changes
   useEffect(() => {
-    loadDocuments();
+    const handler = setTimeout(() => {
+      loadDocuments(searchQuery);
+    }, 250);
 
+    return () => {
+      clearTimeout(handler);
+    };
+  }, [searchQuery, loadDocuments]);
+
+  useEffect(() => {
     const handleUnauthorized = () => {
       setCurrentUser(null);
       setDocuments([]);
@@ -79,12 +88,11 @@ export const App: React.FC = () => {
       window.removeEventListener('auth:unauthorized', handleUnauthorized);
       window.removeEventListener('auth:logout', handleLogoutEvent);
     };
-  }, [loadDocuments, addToast]);
+  }, [addToast]);
 
   const handleSearchChange = useCallback((query: string) => {
     setSearchQuery(query);
-    loadDocuments(query);
-  }, [loadDocuments]);
+  }, []);
 
   const handleOpenUpload = useCallback(() => {
     if (!API.isAuthenticated()) {
