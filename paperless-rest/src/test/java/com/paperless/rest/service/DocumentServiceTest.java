@@ -206,22 +206,24 @@ class DocumentServiceTest {
 
     // GIVEN eine nicht existierende Dokument-ID
     // WHEN deleteById aufgerufen wird
-    // THEN wird eine BusinessLayerException geworfen
+    // THEN wird die Operation idempotent ohne Ausnahme abgeschlossen
     @Test
-    void deleteById_WhenNotFound_ThrowsBusinessLayerException() {
+    void deleteById_WhenNotFound_CompletesIdempotentlyWithoutException() {
         when(documentPersistenceService.existsById(99L)).thenReturn(false);
 
-        assertThrows(BusinessLayerException.class, () -> documentService.deleteById(99L));
+        assertDoesNotThrow(() -> documentService.deleteById(99L));
         verify(documentPersistenceService, never()).deleteById(any());
+        verify(documentStatusHistoryService, never()).deleteByDocumentId(any());
     }
 
     // GIVEN eine Null-Dokument-ID zum Löschen
     // WHEN deleteById aufgerufen wird
-    // THEN wird eine BusinessLayerException geworfen
+    // THEN wird die Operation idempotent ohne Ausnahme abgeschlossen
     @Test
-    void deleteById_WithNullId_ThrowsBusinessLayerException() {
-        assertThrows(BusinessLayerException.class, () -> documentService.deleteById(null));
+    void deleteById_WithNullId_CompletesIdempotentlyWithoutException() {
+        assertDoesNotThrow(() -> documentService.deleteById(null));
         verify(documentPersistenceService, never()).deleteById(any());
+        verify(documentStatusHistoryService, never()).deleteByDocumentId(any());
     }
 
     // GIVEN ein gültiges DocumentModel und Dateiinhalt

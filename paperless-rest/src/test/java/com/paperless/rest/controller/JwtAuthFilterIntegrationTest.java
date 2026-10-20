@@ -41,30 +41,34 @@ class JwtAuthFilterIntegrationTest {
     private DocumentDtoMapper documentDtoMapper;
 
     // GIVEN ein geschützter Endpunkt ohne Authorization-Header
-    // WHEN GET /api/documents aufgerufen wird
+    // WHEN GET /api/v1/documents aufgerufen wird
     // THEN wird der Zugriff mit HTTP-Status 401 Unauthorized verweigert
     @Test
     void getDocuments_WithoutAuthorizationHeader_ReturnsUnauthorized() throws Exception {
-        mockMvc.perform(get("/api/documents"))
+        mockMvc.perform(get("/api/v1/documents"))
                 .andExpect(status().isUnauthorized())
-                .andExpect(jsonPath("$.error").value("Unauthorized"))
-                .andExpect(jsonPath("$.message").value("Missing or invalid Authorization header"));
+                .andExpect(jsonPath("$.title").value("Unauthorized"))
+                .andExpect(jsonPath("$.status").value(401))
+                .andExpect(jsonPath("$.detail").value("Missing or invalid Authorization header"))
+                .andExpect(jsonPath("$.type").value("urn:paperless:problem:unauthorized"));
     }
 
     // GIVEN ein ungültiges oder manipuliertes Bearer-Token
-    // WHEN GET /api/documents aufgerufen wird
+    // WHEN GET /api/v1/documents aufgerufen wird
     // THEN wird der Zugriff mit HTTP-Status 401 Unauthorized verweigert
     @Test
     void getDocuments_WithInvalidBearerToken_ReturnsUnauthorized() throws Exception {
-        mockMvc.perform(get("/api/documents")
+        mockMvc.perform(get("/api/v1/documents")
                         .header("Authorization", "Bearer invalid.fake.token"))
                 .andExpect(status().isUnauthorized())
-                .andExpect(jsonPath("$.error").value("Unauthorized"))
-                .andExpect(jsonPath("$.message").value("Invalid or expired JWT token"));
+                .andExpect(jsonPath("$.title").value("Unauthorized"))
+                .andExpect(jsonPath("$.status").value(401))
+                .andExpect(jsonPath("$.detail").value("Invalid or expired JWT token"))
+                .andExpect(jsonPath("$.type").value("urn:paperless:problem:unauthorized"));
     }
 
     // GIVEN ein kryptografisch gültiges JWT-Bearer-Token
-    // WHEN GET /api/documents aufgerufen wird
+    // WHEN GET /api/v1/documents aufgerufen wird
     // THEN gewährt der Filter Zugriff und liefert HTTP-Status 200 OK
     @Test
     void getDocuments_WithValidBearerToken_ReturnsOk() throws Exception {
@@ -72,7 +76,7 @@ class JwtAuthFilterIntegrationTest {
         when(documentService.findAll()).thenReturn(Collections.emptyList());
         when(documentDtoMapper.toDtoList(Collections.emptyList())).thenReturn(Collections.emptyList());
 
-        mockMvc.perform(get("/api/documents")
+        mockMvc.perform(get("/api/v1/documents")
                         .header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$").isArray());

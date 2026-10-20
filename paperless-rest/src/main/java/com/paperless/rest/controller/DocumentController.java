@@ -1,6 +1,7 @@
 package com.paperless.rest.controller;
 
 import com.paperless.rest.dto.DocumentDto;
+import com.paperless.rest.dto.DocumentSearchQueryDto;
 import com.paperless.rest.mapper.DocumentDtoMapper;
 import com.paperless.rest.service.DocumentService;
 import com.paperless.rest.service.model.DocumentModel;
@@ -16,7 +17,7 @@ import java.io.IOException;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/documents")
+@RequestMapping("/api/v1/documents")
 @RequiredArgsConstructor
 @Slf4j
 public class DocumentController {
@@ -39,9 +40,9 @@ public class DocumentController {
     }
 
     @GetMapping("/search")
-    public ResponseEntity<List<DocumentDto>> searchDocuments(@RequestParam("query") String query) {
-        log.info("REST request to search documents with query: {}", query);
-        List<DocumentModel> results = documentService.search(query);
+    public ResponseEntity<List<DocumentDto>> searchDocuments(@Valid @ModelAttribute DocumentSearchQueryDto searchQuery) {
+        log.info("REST request to search documents with query: {}", searchQuery.getQuery());
+        List<DocumentModel> results = documentService.search(searchQuery.getQuery());
         return ResponseEntity.ok(documentDtoMapper.toDtoList(results));
     }
 

@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 @RestController
+@RequestMapping("/api/v1/documents")
 @RequiredArgsConstructor
 @Slf4j
 public class DocumentStatusHistoryController {
@@ -22,14 +23,14 @@ public class DocumentStatusHistoryController {
     private final DocumentStatusHistoryService documentStatusHistoryService;
     private final DocumentStatusHistoryMapper documentStatusHistoryMapper;
 
-    @GetMapping("/api/documents/{documentId}/history")
+    @GetMapping("/{documentId}/history")
     public ResponseEntity<List<DocumentStatusHistoryDto>> getHistoryForDocument(@PathVariable Long documentId) {
         log.info("REST request to get status history for document: {}", documentId);
         List<DocumentStatusHistoryModel> models = documentStatusHistoryService.getHistoryByDocumentId(documentId);
         return ResponseEntity.ok(documentStatusHistoryMapper.toDtoList(models));
     }
 
-    @PostMapping("/api/documents/{documentId}/status")
+    @PostMapping("/{documentId}/status")
     public ResponseEntity<DocumentStatusHistoryDto> changeDocumentStatus(
             @PathVariable Long documentId,
             @Valid @RequestBody DocumentStatusChangeRequestDto request) {
@@ -40,7 +41,7 @@ public class DocumentStatusHistoryController {
         return ResponseEntity.status(HttpStatus.CREATED).body(documentStatusHistoryMapper.toDto(result));
     }
 
-    @GetMapping("/api/documents/status-history/{id}")
+    @GetMapping("/status-history/{id}")
     public ResponseEntity<DocumentStatusHistoryDto> getHistoryById(@PathVariable Long id) {
         log.info("REST request to get document status history entry: {}", id);
         DocumentStatusHistoryModel model = documentStatusHistoryService.findById(id);

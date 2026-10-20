@@ -39,7 +39,7 @@ class AuthControllerTest {
     // --- Action 1: login ---
 
     // GIVEN gültige Anmeldedaten im Request-Body
-    // WHEN POST /api/auth/login aufgerufen wird
+    // WHEN POST /api/v1/auth/login aufgerufen wird
     // THEN wird der HTTP-Status 200 OK und das LoginResponseDto mit Token zurückgegeben
     @Test
     void login_WithValidCredentials_ReturnsOkAndToken() throws Exception {
@@ -48,7 +48,7 @@ class AuthControllerTest {
 
         when(authService.login(any(LoginRequestDto.class))).thenReturn(response);
 
-        mockMvc.perform(post("/api/auth/login")
+        mockMvc.perform(post("/api/v1/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
@@ -58,7 +58,7 @@ class AuthControllerTest {
     }
 
     // GIVEN ungültige Anmeldedaten
-    // WHEN POST /api/auth/login aufgerufen wird
+    // WHEN POST /api/v1/auth/login aufgerufen wird
     // THEN wird der HTTP-Status 401 Unauthorized zurückgegeben
     @Test
     void login_WithInvalidCredentials_ReturnsUnauthorized() throws Exception {
@@ -67,31 +67,37 @@ class AuthControllerTest {
         when(authService.login(any(LoginRequestDto.class)))
                 .thenThrow(new InvalidCredentialsException("Invalid username or password"));
 
-        mockMvc.perform(post("/api/auth/login")
+        mockMvc.perform(post("/api/v1/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isUnauthorized())
-                .andExpect(jsonPath("$.error").value("Unauthorized"));
+                .andExpect(jsonPath("$.title").value("Unauthorized"))
+                .andExpect(jsonPath("$.status").value(401))
+                .andExpect(jsonPath("$.detail").value("Invalid username or password"))
+                .andExpect(jsonPath("$.type").value("urn:paperless:problem:unauthorized"));
     }
 
     // GIVEN ein Login-Request mit leerem Benutzernamen
-    // WHEN POST /api/auth/login aufgerufen wird
+    // WHEN POST /api/v1/auth/login aufgerufen wird
     // THEN wird der HTTP-Status 400 Bad Request wegen Validierungsfehlern zurückgegeben
     @Test
     void login_WithBlankUsername_ReturnsBadRequest() throws Exception {
         LoginRequestDto request = new LoginRequestDto("   ", "admin123");
 
-        mockMvc.perform(post("/api/auth/login")
+        mockMvc.perform(post("/api/v1/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.error").value("Validation Failed"));
+                .andExpect(jsonPath("$.title").value("Validation Failed"))
+                .andExpect(jsonPath("$.status").value(400))
+                .andExpect(jsonPath("$.type").value("urn:paperless:problem:validation-error"))
+                .andExpect(jsonPath("$.invalidParams.username").exists());
     }
 
     // --- Action 2: getCurrentUser ---
 
     // GIVEN ein gültiger Bearer-Header im Authorization-Header
-    // WHEN GET /api/auth/me aufgerufen wird
+    // WHEN GET /api/v1/auth/me aufgerufen wird
     // THEN wird der HTTP-Status 200 OK und das UserDto zurückgegeben
     @Test
     void getCurrentUser_WithValidBearerToken_ReturnsOk() throws Exception {
@@ -101,7 +107,7 @@ class AuthControllerTest {
         when(authService.getCurrentUser("valid.token")).thenReturn(userModel);
         when(userMapper.toDto(userModel)).thenReturn(userDto);
 
-        mockMvc.perform(get("/api/auth/me")
+        mockMvc.perform(get("/api/v1/auth/me")
                         .header("Authorization", "Bearer valid.token"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.username").value("admin"))
@@ -109,27 +115,32 @@ class AuthControllerTest {
     }
 
     // GIVEN ein fehlender Authorization-Header
-    // WHEN GET /api/auth/me aufgerufen wird
+    // WHEN GET /api/v1/auth/me aufgerufen wird
     // THEN wird der HTTP-Status 401 Unauthorized zurückgegeben
     @Test
     void getCurrentUser_WithoutToken_ReturnsUnauthorized() throws Exception {
-        mockMvc.perform(get("/api/auth/me"))
+        mockMvc.perform(get("/api/v1/auth/me"))
                 .andExpect(status().isUnauthorized())
-                .andExpect(jsonPath("$.error").value("Unauthorized"));
+                .andExpect(jsonPath("$.title").value("Unauthorized"))
+                .andExpect(jsonPath("$.status").value(401))
+                .andExpect(jsonPath("$.detail").value("Missing or invalid Authorization header"))
+                .andExpect(jsonPath("$.type").value("urn:paperless:problem:unauthorized"));
     }
 
     // GIVEN ein ungültiger oder abgelaufener Authentifizierungs-Token
-    // WHEN GET /api/auth/me aufgerufen wird
+    // WHEN GET /api/v1/auth/me aufgerufen wird
     // THEN liefert der Service InvalidCredentialsException und der Controller 401 Unauthorized
     @Test
     void getCurrentUser_WithInvalidToken_ReturnsUnauthorized() throws Exception {
         when(authService.getCurrentUser("invalid.token"))
                 .thenThrow(new InvalidCredentialsException("Invalid or expired authentication token"));
 
-        mockMvc.perform(get("/api/auth/me")
+        mockMvc.perform(get("/api/v1/auth/me")
                         .header("Authorization", "Bearer invalid.token"))
                 .andExpect(status().isUnauthorized())
-                .andExpect(jsonPath("$.error").value("Unauthorized"))
-                .andExpect(jsonPath("$.message").value("Invalid or expired authentication token"));
+                .andExpect(jsonPath("$.title").value("Unauthorized"))
+                .andExpect(jsonPath("$.status").value(401))
+                .andExpect(jsonPath("$.detail").value("Invalid or expired authentication token"))
+                .andExpect(jsonPath("$.type").value("urn:paperless:problem:unauthorized"));
     }
 }

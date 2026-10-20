@@ -104,8 +104,8 @@ public class GlobalExceptionHandler {
         return problem;
     }
 
-    @ExceptionHandler(MethodArgumentNotValidException.class)
-    public ProblemDetail handleValidationExceptions(MethodArgumentNotValidException ex) {
+    @ExceptionHandler({MethodArgumentNotValidException.class, org.springframework.validation.BindException.class})
+    public ProblemDetail handleValidationExceptions(org.springframework.validation.BindException ex) {
         log.warn("Input validation failure: {}", ex.getMessage());
         ProblemDetail problem = ProblemDetail.forStatusAndDetail(
                 HttpStatus.BAD_REQUEST, "Validation failed for one or more request parameters");

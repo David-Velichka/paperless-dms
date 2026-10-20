@@ -69,11 +69,13 @@ public class DocumentServiceImpl implements DocumentService {
     @Override
     public void deleteById(Long id) {
         if (id == null) {
-            throw new BusinessLayerException("Document id must not be null");
+            log.debug("Document id is null, ignoring delete request");
+            return;
         }
         log.info("Deleting document by id: {}", id);
         if (!documentPersistenceService.existsById(id)) {
-            throw new BusinessLayerException("Cannot delete: Document with id " + id + " does not exist");
+            log.debug("Document with id {} does not exist, deletion is idempotent", id);
+            return;
         }
         documentStatusHistoryService.deleteByDocumentId(id);
         documentPersistenceService.deleteById(id);

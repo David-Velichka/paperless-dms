@@ -39,7 +39,8 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         String path = request.getRequestURI();
 
         // Allow public paths without authentication
-        if ("/api/auth/login".equals(path)
+        if ("/api/v1/auth/login".equals(path)
+                || "/api/auth/login".equals(path)
                 || path.startsWith("/swagger-ui")
                 || path.startsWith("/v3/api-docs")
                 || path.startsWith("/api-docs")
@@ -73,7 +74,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
 
     private void sendUnauthorized(HttpServletResponse response, String message) throws IOException {
         response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-        response.setContentType(MediaType.APPLICATION_JSON_VALUE);
-        response.getWriter().write(String.format("{\"status\":401,\"error\":\"Unauthorized\",\"message\":\"%s\"}", message));
+        response.setContentType(MediaType.APPLICATION_PROBLEM_JSON_VALUE);
+        response.getWriter().write(String.format("{\"type\":\"urn:paperless:problem:unauthorized\",\"title\":\"Unauthorized\",\"status\":401,\"detail\":\"%s\",\"error\":\"Unauthorized\",\"message\":\"%s\"}", message, message));
     }
 }
