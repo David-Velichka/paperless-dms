@@ -42,3 +42,14 @@ logging:
   level:
     com.paperless.rest: DEBUG
     org.springframework.web: INFO
+    org.hibernate.SQL: DEBUG
+    org.hibernate.orm.jdbc.bind: TRACE
+
+jwt:
+  secret: ${JWT_SECRET:paperless-super-secret-key-for-swen3-semester-project-2026}
+  expiration-ms: ${JWT_EXPIRATION_MS:86400000}
+
+security:
+  jwt:
+    enabled: ${SECURITY_JWT_ENABLED:true}
+

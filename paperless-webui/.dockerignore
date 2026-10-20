@@ -1,0 +1,7 @@
+# Docker ignore for paperless-webui
+.git
+.gitignore
+node_modules
+dist
+.DS_Store
+Thumbs.db

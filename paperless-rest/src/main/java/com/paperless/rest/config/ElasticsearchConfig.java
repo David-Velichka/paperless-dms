@@ -1,15 +1,11 @@
 package com.paperless.rest.config;
 
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.context.annotation.Configuration;
+import org.springframework.boot.context.properties.ConfigurationProperties;
 
-@Configuration
-public class ElasticsearchConfig {
-
-    @Value("${elasticsearch.uris:http://localhost:9200}")
-    private String elasticsearchUri;
+@ConfigurationProperties(prefix = "elasticsearch")
+public record ElasticsearchConfig(String uris) {
 
     public String getElasticsearchUri() {
-        return elasticsearchUri;
+        return uris;
     }
 }

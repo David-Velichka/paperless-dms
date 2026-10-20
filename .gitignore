@@ -3,3 +3,8 @@
 *.swp
 *.DS_Store
 Thumbs.db
+
+# Node / Frontend Build
+node_modules/
+dist/
+*.tsbuildinfo

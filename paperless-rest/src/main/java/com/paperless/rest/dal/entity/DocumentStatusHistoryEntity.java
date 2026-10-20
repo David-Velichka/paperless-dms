@@ -4,8 +4,9 @@ import com.paperless.rest.service.model.DocumentStatus;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
-import lombok.Data;
+import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 import java.time.OffsetDateTime;
 
@@ -14,7 +15,9 @@ import java.time.OffsetDateTime;
  */
 @Entity
 @Table(name = "document_status_histories")
-@Data
+@EntityListeners(DocumentStatusHistoryEntityListener.class)
+@Getter
+@Setter
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
@@ -49,5 +52,18 @@ public class DocumentStatusHistoryEntity {
         if (timestamp == null) {
             timestamp = OffsetDateTime.now();
         }
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        DocumentStatusHistoryEntity that = (DocumentStatusHistoryEntity) o;
+        return id != null && id.equals(that.id);
+    }
+
+    @Override
+    public int hashCode() {
+        return getClass().hashCode();
     }
 }

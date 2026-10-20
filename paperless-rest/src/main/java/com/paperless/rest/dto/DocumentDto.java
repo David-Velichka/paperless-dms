@@ -4,18 +4,24 @@ import com.paperless.rest.service.model.DocumentStatus;
 import jakarta.validation.constraints.NotBlank;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
-import lombok.Data;
+import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 import java.time.OffsetDateTime;
-import java.util.List;
 
-@Data
+/**
+ * Legacy/composite Document DTO.
+ */
+@Getter
+@Setter
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
 public class DocumentDto {
+
     private Long id;
+    private Long version;
 
     @NotBlank(message = "Title must not be blank")
     private String title;

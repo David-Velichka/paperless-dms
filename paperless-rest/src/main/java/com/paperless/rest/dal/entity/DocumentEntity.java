@@ -4,8 +4,9 @@ import com.paperless.rest.service.model.DocumentStatus;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
-import lombok.Data;
+import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 import java.time.OffsetDateTime;
 
@@ -14,7 +15,8 @@ import java.time.OffsetDateTime;
  */
 @Entity
 @Table(name = "documents")
-@Data
+@EntityListeners(DocumentEntityListener.class)
+@Getter
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
@@ -24,6 +26,11 @@ public class DocumentEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Version
+    @Column(name = "version")
+    private Long version;
+
+    @Setter
     @Column(nullable = false)
     private String title;
 
@@ -39,12 +46,15 @@ public class DocumentEntity {
     @Column(name = "storage_path")
     private String storagePath;
 
+    @Setter
     @Column(name = "ocr_text", columnDefinition = "TEXT")
     private String ocrText;
 
+    @Setter
     @Column(name = "summary", columnDefinition = "TEXT")
     private String summary;
 
+    @Setter
     @Enumerated(EnumType.STRING)
     @Column(name = "current_status", nullable = false, length = 50)
     private DocumentStatus currentStatus;
@@ -69,5 +79,18 @@ public class DocumentEntity {
     @PreUpdate
     protected void onUpdate() {
         modifiedAt = OffsetDateTime.now();
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        DocumentEntity that = (DocumentEntity) o;
+        return id != null && id.equals(that.id);
+    }
+
+    @Override
+    public int hashCode() {
+        return getClass().hashCode();
     }
 }

@@ -29,9 +29,21 @@ services:
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/paperless
       SPRING_DATASOURCE_USERNAME: paperless_user
       SPRING_DATASOURCE_PASSWORD: paperless_secure_pass
+      JWT_SECRET: paperless-super-secret-key-for-swen3-semester-project-2026
     depends_on:
       postgres:
         condition: service_healthy
+
+  paperless-webui:
+    build:
+      context: ./paperless-webui
+      dockerfile: Dockerfile
+    container_name: paperless-webui
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    depends_on:
+      - paperless-rest
 
 volumes:
   postgres_data:

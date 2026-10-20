@@ -1,22 +1,23 @@
 package com.paperless.rest.config;
 
-import lombok.Getter;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.context.annotation.Configuration;
+import org.springframework.boot.context.properties.ConfigurationProperties;
 
-@Configuration
-@Getter
-public class RustFsConfig {
+@ConfigurationProperties(prefix = "rustfs")
+public record RustFsConfig(String endpoint, String accessKey, String secretKey, String bucketName) {
 
-    @Value("${rustfs.endpoint:http://localhost:9000}")
-    private String endpoint;
+    public String getEndpoint() {
+        return endpoint;
+    }
 
-    @Value("${rustfs.access-key:rustfsadmin}")
-    private String accessKey;
+    public String getAccessKey() {
+        return accessKey;
+    }
 
-    @Value("${rustfs.secret-key:rustfsadmin}")
-    private String secretKey;
+    public String getSecretKey() {
+        return secretKey;
+    }
 
-    @Value("${rustfs.bucket-name:paperless-documents}")
-    private String bucketName;
+    public String getBucketName() {
+        return bucketName;
+    }
 }
