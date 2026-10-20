@@ -25,7 +25,7 @@ public class DocumentStatusHistoryServiceImpl implements DocumentStatusHistorySe
     private final DocumentStatusHistoryModelValidator historyModelValidator;
 
     @Override
-    public DocumentStatusHistoryModel changeStatus(Long documentId, DocumentStatus targetStatus, String changedBy, String comment) {
+    public DocumentStatusHistoryModel changeStatus(Long documentId, DocumentStatus targetStatus, String comment) {
         if (documentId == null) {
             throw new BusinessLayerException("Document id must not be null");
         }
@@ -38,7 +38,7 @@ public class DocumentStatusHistoryServiceImpl implements DocumentStatusHistorySe
 
         DocumentStatus previousStatus = documentModel.getCurrentStatus() != null ? documentModel.getCurrentStatus() : DocumentStatus.RECEIVED;
 
-        log.info("Transitioning document {} status from {} to {} by {}", documentId, previousStatus, targetStatus, changedBy);
+        log.info("Transitioning document {} status from {} to {}", documentId, previousStatus, targetStatus);
 
         documentModel.transitionTo(targetStatus);
 
@@ -46,7 +46,6 @@ public class DocumentStatusHistoryServiceImpl implements DocumentStatusHistorySe
                 .documentId(documentId)
                 .status(targetStatus)
                 .previousStatus(previousStatus)
-                .changedBy(changedBy != null ? changedBy.trim() : null)
                 .timestamp(OffsetDateTime.now())
                 .comment(comment != null ? comment.trim() : null)
                 .build();
@@ -71,18 +70,16 @@ public class DocumentStatusHistoryServiceImpl implements DocumentStatusHistorySe
     }
 
     @Override
-    public DocumentStatusHistoryModel createInitialHistory(Long documentId, String changedBy, String comment) {
+    public DocumentStatusHistoryModel createInitialHistory(Long documentId, String comment) {
         if (documentId == null) {
             throw new BusinessLayerException("Document id must not be null");
         }
-        String actor = (changedBy != null && !changedBy.isBlank()) ? changedBy.trim() : "uploader";
         String note = (comment != null && !comment.isBlank()) ? comment.trim() : "Initial upload";
 
         DocumentStatusHistoryModel historyModel = DocumentStatusHistoryModel.builder()
                 .documentId(documentId)
                 .status(DocumentStatus.RECEIVED)
                 .previousStatus(null)
-                .changedBy(actor)
                 .timestamp(OffsetDateTime.now())
                 .comment(note)
                 .build();

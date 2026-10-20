@@ -51,7 +51,6 @@ class DocumentStatusHistoryControllerTest {
                 .id(1L)
                 .documentId(10L)
                 .status(DocumentStatus.RECEIVED)
-                .changedBy("user")
                 .timestamp(OffsetDateTime.now())
                 .build();
 
@@ -59,7 +58,6 @@ class DocumentStatusHistoryControllerTest {
                 .id(1L)
                 .documentId(10L)
                 .status(DocumentStatus.RECEIVED)
-                .changedBy("user")
                 .timestamp(OffsetDateTime.now())
                 .build();
 
@@ -97,7 +95,6 @@ class DocumentStatusHistoryControllerTest {
     void changeDocumentStatus_WithValidRequest_ReturnsCreated() throws Exception {
         DocumentStatusChangeRequestDto request = DocumentStatusChangeRequestDto.builder()
                 .status(DocumentStatus.PROCESSING)
-                .changedBy("worker")
                 .comment("Starting OCR")
                 .build();
 
@@ -106,7 +103,6 @@ class DocumentStatusHistoryControllerTest {
                 .documentId(10L)
                 .status(DocumentStatus.PROCESSING)
                 .previousStatus(DocumentStatus.RECEIVED)
-                .changedBy("worker")
                 .comment("Starting OCR")
                 .build();
 
@@ -115,11 +111,10 @@ class DocumentStatusHistoryControllerTest {
                 .documentId(10L)
                 .status(DocumentStatus.PROCESSING)
                 .previousStatus(DocumentStatus.RECEIVED)
-                .changedBy("worker")
                 .comment("Starting OCR")
                 .build();
 
-        when(documentStatusHistoryService.changeStatus(eq(10L), eq(DocumentStatus.PROCESSING), eq("worker"), eq("Starting OCR")))
+        when(documentStatusHistoryService.changeStatus(eq(10L), eq(DocumentStatus.PROCESSING), eq("Starting OCR")))
                 .thenReturn(model);
         when(documentStatusHistoryMapper.toDto(model)).thenReturn(dto);
 
@@ -138,7 +133,6 @@ class DocumentStatusHistoryControllerTest {
     void changeDocumentStatus_WithMissingStatus_ReturnsBadRequest() throws Exception {
         DocumentStatusChangeRequestDto request = DocumentStatusChangeRequestDto.builder()
                 .status(null)
-                .changedBy("worker")
                 .build();
 
         mockMvc.perform(post("/api/v1/documents/10/status")
@@ -151,26 +145,6 @@ class DocumentStatusHistoryControllerTest {
                 .andExpect(jsonPath("$.invalidParams.status").exists());
     }
 
-    // GIVEN eine Statusänderungsanforderung mit leerem Akteur
-    // WHEN POST /api/v1/documents/{id}/status aufgerufen wird
-    // THEN liefert der Controller 400 Bad Request wegen Validierungsfehler
-    @Test
-    void changeDocumentStatus_WithBlankChangedBy_ReturnsBadRequest() throws Exception {
-        DocumentStatusChangeRequestDto request = DocumentStatusChangeRequestDto.builder()
-                .status(DocumentStatus.PROCESSING)
-                .changedBy("   ")
-                .build();
-
-        mockMvc.perform(post("/api/v1/documents/10/status")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.title").value("Validation Failed"))
-                .andExpect(jsonPath("$.status").value(400))
-                .andExpect(jsonPath("$.type").value("urn:paperless:problem:validation-error"))
-                .andExpect(jsonPath("$.invalidParams.changedBy").exists());
-    }
-
     // GIVEN eine unzulässige Status-Transition in der Geschäftslogik
     // WHEN POST /api/v1/documents/{id}/status aufgerufen wird
     // THEN liefert der Controller 400 Bad Request
@@ -178,10 +152,9 @@ class DocumentStatusHistoryControllerTest {
     void changeDocumentStatus_WithIllegalTransition_ReturnsBadRequest() throws Exception {
         DocumentStatusChangeRequestDto request = DocumentStatusChangeRequestDto.builder()
                 .status(DocumentStatus.COMPLETED)
-                .changedBy("worker")
                 .build();
 
-        when(documentStatusHistoryService.changeStatus(eq(10L), eq(DocumentStatus.COMPLETED), eq("worker"), any()))
+        when(documentStatusHistoryService.changeStatus(eq(10L), eq(DocumentStatus.COMPLETED), any()))
                 .thenThrow(new BusinessLayerException("Illegal status transition from RECEIVED to COMPLETED"));
 
         mockMvc.perform(post("/api/v1/documents/10/status")
@@ -205,14 +178,12 @@ class DocumentStatusHistoryControllerTest {
                 .id(5L)
                 .documentId(10L)
                 .status(DocumentStatus.REVIEW_PENDING)
-                .changedBy("user")
                 .build();
 
         DocumentStatusHistoryDto dto = DocumentStatusHistoryDto.builder()
                 .id(5L)
                 .documentId(10L)
                 .status(DocumentStatus.REVIEW_PENDING)
-                .changedBy("user")
                 .build();
 
         when(documentStatusHistoryService.findById(5L)).thenReturn(model);

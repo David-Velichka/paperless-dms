@@ -159,16 +159,10 @@ classDiagram
         -Long documentId
         -DocumentStatus status
         -DocumentStatus previousStatus
-        -String changedBy
         -OffsetDateTime timestamp
         -String comment
     }
 
-    class UserModel {
-        <<Domain Model>>
-        -String username
-        -String role
-    }
 
     DocumentModel "1" *-- "0..*" DocumentStatusHistoryModel : owns & logs
     DocumentModel --> "1" DocumentStatus : currentStatus
@@ -269,7 +263,7 @@ To guarantee data consistency without heavy distributed locks:
 - **Build Check**: Ran `./gradlew clean test` -> 114 tests passing (100% pass rate).
 - **Concurrent Conflict Test**: Verified via `DocumentControllerTest.createDocument_WhenConcurrentConflictOccurs_ReturnsConflict()` asserting HTTP 409 Conflict.
 - **Layered Logging**: Verified across all 3 tiers:
-  - Presentation Tier: `DocumentController`, `DocumentStatusHistoryController`, `AuthController`, `JwtAuthFilter`.
-  - Business Layer: `DocumentServiceImpl`, `DocumentStatusHistoryServiceImpl`, `AuthServiceImpl`, `JwtService`, validators.
+  - Presentation Tier: `DocumentController`, `DocumentStatusHistoryController`.
+  - Business Layer: `DocumentServiceImpl`, `DocumentStatusHistoryServiceImpl`, validators.
   - Data Access Layer: `DocumentEntityListener`, `DocumentStatusHistoryEntityListener`, and Hibernate SQL debugging in `application.yaml`.
 - **Dependency Injection**: SLF4J `Logger` configured as prototype bean in `LoggingConfig.java`; constructor injection enforced via `@RequiredArgsConstructor` across all Spring components.

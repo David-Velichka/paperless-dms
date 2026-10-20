@@ -67,18 +67,6 @@ public class GlobalExceptionHandler {
         return problem;
     }
 
-    @ExceptionHandler(InvalidCredentialsException.class)
-    public ProblemDetail handleInvalidCredentials(InvalidCredentialsException ex) {
-        log.warn("Authentication failed: {}", ex.getMessage());
-        ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.UNAUTHORIZED, ex.getMessage());
-        problem.setTitle("Unauthorized");
-        problem.setType(URI.create("urn:paperless:problem:unauthorized"));
-        problem.setProperty("timestamp", OffsetDateTime.now());
-        problem.setProperty("error", problem.getTitle());
-        problem.setProperty("message", ex.getMessage());
-        return problem;
-    }
-
     @ExceptionHandler(BusinessLayerException.class)
     public ProblemDetail handleBusinessLayerException(BusinessLayerException ex) {
         log.warn("Business layer exception occurred: {}", ex.getMessage());

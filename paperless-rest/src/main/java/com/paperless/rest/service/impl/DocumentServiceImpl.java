@@ -36,7 +36,7 @@ public class DocumentServiceImpl implements DocumentService {
         }
         DocumentModel saved = documentPersistenceService.save(documentModel);
         if (isNew) {
-            documentStatusHistoryService.createInitialHistory(saved.getId(), "system", "Document metadata created");
+            documentStatusHistoryService.createInitialHistory(saved.getId(), "Document metadata created");
         }
         return saved;
     }
@@ -98,7 +98,7 @@ public class DocumentServiceImpl implements DocumentService {
         }
         DocumentModel saved = documentPersistenceService.save(documentModel);
 
-        documentStatusHistoryService.createInitialHistory(saved.getId(), "uploader", "Document file uploaded");
+        documentStatusHistoryService.createInitialHistory(saved.getId(), "Document file uploaded");
 
         return saved;
     }

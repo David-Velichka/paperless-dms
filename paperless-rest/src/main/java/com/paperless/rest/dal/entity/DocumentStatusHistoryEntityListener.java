@@ -13,8 +13,8 @@ public class DocumentStatusHistoryEntityListener {
 
     @PostPersist
     public void onPostPersist(DocumentStatusHistoryEntity entity) {
-        log.debug("DAL persistence event: DocumentStatusHistory recorded for documentId={}, transition={} -> {}, changedBy='{}'",
-                entity.getDocumentId(), entity.getPreviousStatus(), entity.getStatus(), entity.getChangedBy());
+        log.debug("DAL persistence event: DocumentStatusHistory recorded for documentId={}, transition={} -> {}",
+                entity.getDocumentId(), entity.getPreviousStatus(), entity.getStatus());
     }
 
     @PostRemove
@@ -22,4 +22,3 @@ public class DocumentStatusHistoryEntityListener {
         log.debug("DAL persistence event: DocumentStatusHistory removed with id={}", entity.getId());
     }
 }
-

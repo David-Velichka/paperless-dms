@@ -86,7 +86,7 @@ class DocumentServiceTest {
         assertEquals(5L, result.getId());
         assertEquals(DocumentStatus.RECEIVED, result.getCurrentStatus());
         verify(documentStatusHistoryService, times(1))
-                .createInitialHistory(5L, "system", "Document metadata created");
+                .createInitialHistory(5L, "Document metadata created");
     }
 
     // GIVEN ein Null-DocumentModel
@@ -258,7 +258,7 @@ class DocumentServiceTest {
         verify(documentModelValidator, times(1)).validateOrThrow(inputModel);
         verify(documentPersistenceService, times(1)).save(any(DocumentModel.class));
         verify(documentStatusHistoryService, times(1))
-                .createInitialHistory(10L, "uploader", "Document file uploaded");
+                .createInitialHistory(10L, "Document file uploaded");
     }
 
     // GIVEN ein Null-DocumentModel beim Upload

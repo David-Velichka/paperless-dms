@@ -2,7 +2,6 @@ package com.paperless.rest.service.validation;
 
 import com.paperless.rest.service.model.DocumentModel;
 import com.paperless.rest.service.model.DocumentStatus;
-import com.paperless.rest.service.model.UserModel;
 import jakarta.validation.ConstraintViolation;
 import org.junit.jupiter.api.Test;
 
@@ -28,17 +27,20 @@ class ValidatorFactoryTest {
         assertTrue(violations.isEmpty());
     }
 
-    // GIVEN die ValidatorFactory und ein ungültiges UserModel mit leerem Benutzernamen
-    // WHEN forClass(UserModel.class).validate aufgerufen wird
+    // GIVEN die ValidatorFactory und ein ungültiges DocumentModel mit leerem Titel
+    // WHEN forClass(DocumentModel.class).validate aufgerufen wird
     // THEN liefert der Validator ConstraintViolations mit entsprechender Fehlermeldung
     @Test
-    void forClass_WithInvalidUserModel_ReturnsViolations() {
-        Validator<UserModel> validator = ValidatorFactory.forClass(UserModel.class);
-        UserModel user = new UserModel("", "USER");
+    void forClass_WithInvalidDocumentModel_ReturnsViolations() {
+        Validator<DocumentModel> validator = ValidatorFactory.forClass(DocumentModel.class);
+        DocumentModel model = DocumentModel.builder()
+                .title("   ")
+                .originalFilename("valid.pdf")
+                .currentStatus(DocumentStatus.RECEIVED)
+                .build();
 
-        Set<ConstraintViolation<UserModel>> violations = validator.validate(user);
+        Set<ConstraintViolation<DocumentModel>> violations = validator.validate(model);
         assertFalse(violations.isEmpty());
-        assertTrue(violations.stream().anyMatch(v -> v.getMessage().contains("Username must not be blank")));
+        assertTrue(violations.stream().anyMatch(v -> v.getMessage().contains("Document title must not be blank")));
     }
 }
-
