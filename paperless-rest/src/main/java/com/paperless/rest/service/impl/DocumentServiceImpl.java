@@ -1,8 +1,6 @@
 package com.paperless.rest.service.impl;
 
-import com.paperless.rest.dal.entity.DocumentEntity;
-import com.paperless.rest.dal.mapper.DocumentEntityMapper;
-import com.paperless.rest.dal.repository.DocumentRepository;
+import com.paperless.rest.dal.persistence.DocumentPersistenceService;
 import com.paperless.rest.exception.BusinessLayerException;
 import com.paperless.rest.service.DocumentService;
 import com.paperless.rest.service.DocumentStatusHistoryService;
@@ -12,18 +10,15 @@ import com.paperless.rest.service.validation.DocumentModelValidator;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
 @Service
 @RequiredArgsConstructor
 @Slf4j
-@Transactional
 public class DocumentServiceImpl implements DocumentService {
 
-    private final DocumentRepository documentRepository;
-    private final DocumentEntityMapper documentEntityMapper;
+    private final DocumentPersistenceService documentPersistenceService;
     private final DocumentStatusHistoryService documentStatusHistoryService;
     private final DocumentModelValidator documentModelValidator;
 
@@ -35,46 +30,40 @@ public class DocumentServiceImpl implements DocumentService {
         documentModelValidator.validateOrThrow(documentModel);
 
         log.info("Saving document model: {}", documentModel.getTitle());
-        DocumentEntity entity = documentEntityMapper.toEntity(documentModel);
-        boolean isNew = (entity.getId() == null);
-        if (isNew && entity.getCurrentStatus() == null) {
-            entity.setCurrentStatus(DocumentStatus.RECEIVED);
+        boolean isNew = (documentModel.getId() == null);
+        if (isNew && documentModel.getCurrentStatus() == null) {
+            documentModel = documentModel.toBuilder().currentStatus(DocumentStatus.RECEIVED).build();
         }
-        DocumentEntity saved = documentRepository.save(entity);
+        DocumentModel saved = documentPersistenceService.save(documentModel);
         if (isNew) {
             documentStatusHistoryService.createInitialHistory(saved.getId(), "system", "Document metadata created");
         }
-        return documentEntityMapper.toModel(saved);
+        return saved;
     }
 
     @Override
-    @Transactional(readOnly = true)
     public DocumentModel findById(Long id) {
         if (id == null) {
             throw new BusinessLayerException("Document id must not be null");
         }
         log.debug("Finding document by id: {}", id);
-        return documentRepository.findById(id)
-                .map(documentEntityMapper::toModel)
+        return documentPersistenceService.findById(id)
                 .orElseThrow(() -> new BusinessLayerException("Document with id " + id + " not found"));
     }
 
     @Override
-    @Transactional(readOnly = true)
     public List<DocumentModel> findAll() {
         log.debug("Finding all documents");
-        return documentEntityMapper.toModelList(documentRepository.findAll());
+        return documentPersistenceService.findAll();
     }
 
     @Override
-    @Transactional(readOnly = true)
     public List<DocumentModel> search(String query) {
         log.info("Searching documents with query: {}", query);
         if (query == null || query.isBlank()) {
             return findAll();
         }
-        List<DocumentEntity> entities = documentRepository.findByTitleContainingIgnoreCase(query);
-        return documentEntityMapper.toModelList(entities);
+        return documentPersistenceService.searchByTitle(query);
     }
 
     @Override
@@ -83,11 +72,11 @@ public class DocumentServiceImpl implements DocumentService {
             throw new BusinessLayerException("Document id must not be null");
         }
         log.info("Deleting document by id: {}", id);
-        if (!documentRepository.existsById(id)) {
+        if (!documentPersistenceService.existsById(id)) {
             throw new BusinessLayerException("Cannot delete: Document with id " + id + " does not exist");
         }
         documentStatusHistoryService.deleteByDocumentId(id);
-        documentRepository.deleteById(id);
+        documentPersistenceService.deleteById(id);
     }
 
     @Override
@@ -102,14 +91,13 @@ public class DocumentServiceImpl implements DocumentService {
 
         log.info("Uploading document: {} (size: {} bytes)", documentModel.getTitle(), content.length);
 
-        DocumentEntity entity = documentEntityMapper.toEntity(documentModel);
-        if (entity.getCurrentStatus() == null) {
-            entity.setCurrentStatus(DocumentStatus.RECEIVED);
+        if (documentModel.getCurrentStatus() == null) {
+            documentModel = documentModel.toBuilder().currentStatus(DocumentStatus.RECEIVED).build();
         }
-        DocumentEntity saved = documentRepository.save(entity);
+        DocumentModel saved = documentPersistenceService.save(documentModel);
 
         documentStatusHistoryService.createInitialHistory(saved.getId(), "uploader", "Document file uploaded");
 
-        return documentEntityMapper.toModel(saved);
+        return saved;
     }
 }

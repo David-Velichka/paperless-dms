@@ -1,12 +1,8 @@
 package com.paperless.rest.service.impl;
 
-import com.paperless.rest.dal.entity.DocumentEntity;
-import com.paperless.rest.dal.entity.DocumentStatusHistoryEntity;
-import com.paperless.rest.dal.mapper.DocumentEntityMapper;
-import com.paperless.rest.dal.repository.DocumentRepository;
-import com.paperless.rest.dal.repository.DocumentStatusHistoryRepository;
+import com.paperless.rest.dal.persistence.DocumentPersistenceService;
+import com.paperless.rest.dal.persistence.DocumentStatusHistoryPersistenceService;
 import com.paperless.rest.exception.BusinessLayerException;
-import com.paperless.rest.mapper.DocumentStatusHistoryMapper;
 import com.paperless.rest.service.DocumentStatusHistoryService;
 import com.paperless.rest.service.model.DocumentModel;
 import com.paperless.rest.service.model.DocumentStatus;
@@ -15,7 +11,6 @@ import com.paperless.rest.service.validation.DocumentStatusHistoryModelValidator
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.time.OffsetDateTime;
 import java.util.List;
@@ -23,13 +18,10 @@ import java.util.List;
 @Service
 @RequiredArgsConstructor
 @Slf4j
-@Transactional
 public class DocumentStatusHistoryServiceImpl implements DocumentStatusHistoryService {
 
-    private final DocumentRepository documentRepository;
-    private final DocumentStatusHistoryRepository documentStatusHistoryRepository;
-    private final DocumentEntityMapper documentEntityMapper;
-    private final DocumentStatusHistoryMapper documentStatusHistoryMapper;
+    private final DocumentPersistenceService documentPersistenceService;
+    private final DocumentStatusHistoryPersistenceService documentStatusHistoryPersistenceService;
     private final DocumentStatusHistoryModelValidator historyModelValidator;
 
     @Override
@@ -41,10 +33,9 @@ public class DocumentStatusHistoryServiceImpl implements DocumentStatusHistorySe
             throw new BusinessLayerException("Target status must not be null");
         }
 
-        DocumentEntity documentEntity = documentRepository.findById(documentId)
+        DocumentModel documentModel = documentPersistenceService.findById(documentId)
                 .orElseThrow(() -> new BusinessLayerException("Document with id " + documentId + " not found"));
 
-        DocumentModel documentModel = documentEntityMapper.toModel(documentEntity);
         DocumentStatus previousStatus = documentModel.getCurrentStatus() != null ? documentModel.getCurrentStatus() : DocumentStatus.RECEIVED;
 
         log.info("Transitioning document {} status from {} to {} by {}", documentId, previousStatus, targetStatus, changedBy);
@@ -62,26 +53,21 @@ public class DocumentStatusHistoryServiceImpl implements DocumentStatusHistorySe
 
         historyModelValidator.validateOrThrow(historyModel);
 
-        documentEntity.setCurrentStatus(documentModel.getCurrentStatus());
-        documentRepository.save(documentEntity);
+        documentPersistenceService.save(documentModel);
 
-        DocumentStatusHistoryEntity historyEntity = documentStatusHistoryMapper.toEntity(historyModel);
-        DocumentStatusHistoryEntity savedHistory = documentStatusHistoryRepository.save(historyEntity);
-        return documentStatusHistoryMapper.toModel(savedHistory);
+        return documentStatusHistoryPersistenceService.save(historyModel);
     }
 
     @Override
-    @Transactional(readOnly = true)
     public List<DocumentStatusHistoryModel> getHistoryByDocumentId(Long documentId) {
         if (documentId == null) {
             throw new BusinessLayerException("Document id must not be null");
         }
-        if (!documentRepository.existsById(documentId)) {
+        if (!documentPersistenceService.existsById(documentId)) {
             throw new BusinessLayerException("Document with id " + documentId + " not found");
         }
         log.debug("Fetching status history for document id: {}", documentId);
-        List<DocumentStatusHistoryEntity> entities = documentStatusHistoryRepository.findByDocumentIdOrderByTimestampDesc(documentId);
-        return documentStatusHistoryMapper.toModelList(entities);
+        return documentStatusHistoryPersistenceService.findByDocumentIdOrderByTimestampDesc(documentId);
     }
 
     @Override
@@ -103,19 +89,15 @@ public class DocumentStatusHistoryServiceImpl implements DocumentStatusHistorySe
 
         historyModelValidator.validateOrThrow(historyModel);
 
-        DocumentStatusHistoryEntity historyEntity = documentStatusHistoryMapper.toEntity(historyModel);
-        DocumentStatusHistoryEntity saved = documentStatusHistoryRepository.save(historyEntity);
-        return documentStatusHistoryMapper.toModel(saved);
+        return documentStatusHistoryPersistenceService.save(historyModel);
     }
 
     @Override
-    @Transactional(readOnly = true)
     public DocumentStatusHistoryModel findById(Long id) {
         if (id == null) {
             throw new BusinessLayerException("History id must not be null");
         }
-        return documentStatusHistoryRepository.findById(id)
-                .map(documentStatusHistoryMapper::toModel)
+        return documentStatusHistoryPersistenceService.findById(id)
                 .orElseThrow(() -> new BusinessLayerException("DocumentStatusHistory with id " + id + " not found"));
     }
 
@@ -124,6 +106,6 @@ public class DocumentStatusHistoryServiceImpl implements DocumentStatusHistorySe
         if (documentId == null) {
             throw new BusinessLayerException("Document id must not be null");
         }
-        documentStatusHistoryRepository.deleteByDocumentId(documentId);
+        documentStatusHistoryPersistenceService.deleteByDocumentId(documentId);
     }
 }
