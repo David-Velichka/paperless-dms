@@ -7,14 +7,70 @@ info:
 servers:
   - url: http://localhost:8081
     description: Direct Backend REST Server
-  - url: http://localhost:80/api
+  - url: http://localhost:80/api/v1
     description: Via Nginx Reverse Proxy
 
 paths:
-  /api/documents:
+  /api/v1/auth/login:
+    post:
+      summary: Authenticate user credentials and receive a JWT token
+      operationId: login
+      tags:
+        - Authentication
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequestDto'
+      responses:
+        '200':
+          description: Authentication successful, returns JWT bearer token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponseDto'
+        '400':
+          description: Validation error
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
+        '401':
+          description: Invalid username or password
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
+
+  /api/v1/auth/me:
+    get:
+      summary: Retrieve authenticated user profile
+      operationId: getCurrentUser
+      tags:
+        - Authentication
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Authenticated user details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserDto'
+        '401':
+          description: Missing or invalid JWT token
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
+
+  /api/v1/documents:
     get:
       summary: Retrieve all documents
       operationId: getAllDocuments
+      tags:
+        - Documents
       responses:
         '200':
           description: List of documents successfully retrieved
@@ -23,29 +79,39 @@ paths:
               schema:
                 type: array
                 items:
-                  $ref: '#/components/schemas/DocumentDto'
+                  $ref: '#/components/schemas/DocumentResponseDto'
     post:
       summary: Create new document metadata
       operationId: createDocument
+      tags:
+        - Documents
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/DocumentDto'
+              $ref: '#/components/schemas/DocumentCreateDto'
       responses:
         '201':
           description: Document successfully created
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/DocumentDto'
+                $ref: '#/components/schemas/DocumentResponseDto'
+        '400':
+          description: Validation failure
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
 
-  /api/documents/upload:
+  /api/v1/documents/upload:
     post:
       summary: Upload a document file
       description: Uploads a document file with optional title metadata, persisting initial document record
       operationId: uploadDocument
+      tags:
+        - Documents
       requestBody:
         required: true
         content:
@@ -68,14 +134,20 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/DocumentDto'
+                $ref: '#/components/schemas/DocumentResponseDto'
         '400':
           description: Bad request (missing or empty file)
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
 
-  /api/documents/{id}:
+  /api/v1/documents/{id}:
     get:
       summary: Retrieve document by ID
       operationId: getDocumentById
+      tags:
+        - Documents
       parameters:
         - name: id
           in: path
@@ -89,12 +161,19 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/DocumentDto'
+                $ref: '#/components/schemas/DocumentResponseDto'
         '404':
           description: Document not found
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
     delete:
       summary: Delete document by ID
+      description: Deletes document if present, returning HTTP 204 No Content unconditionally per RFC 9110 idempotency
       operationId: deleteDocument
+      tags:
+        - Documents
       parameters:
         - name: id
           in: path
@@ -104,18 +183,22 @@ paths:
             format: int64
       responses:
         '204':
-          description: Document deleted
+          description: Document deleted or already absent (idempotent)
 
-  /api/documents/search:
+  /api/v1/documents/search:
     get:
       summary: Full-text search for documents
       operationId: searchDocuments
+      tags:
+        - Documents
       parameters:
         - name: query
           in: query
           required: true
           schema:
             type: string
+            minLength: 1
+            maxLength: 100
       responses:
         '200':
           description: Search results
@@ -124,14 +207,22 @@ paths:
               schema:
                 type: array
                 items:
-                  $ref: '#/components/schemas/DocumentDto'
+                  $ref: '#/components/schemas/DocumentResponseDto'
+        '400':
+          description: Validation error
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
 
-  /api/documents/{id}/history:
+  /api/v1/documents/{documentId}/history:
     get:
       summary: Retrieve status transition history for a document
       operationId: getDocumentStatusHistory
+      tags:
+        - Status History
       parameters:
-        - name: id
+        - name: documentId
           in: path
           required: true
           schema:
@@ -146,13 +237,21 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/DocumentStatusHistoryDto'
+        '404':
+          description: Document not found
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
 
-  /api/documents/{id}/status:
+  /api/v1/documents/{documentId}/status:
     post:
       summary: Transition document status
       operationId: changeDocumentStatus
+      tags:
+        - Status History
       parameters:
-        - name: id
+        - name: documentId
           in: path
           required: true
           schema:
@@ -173,11 +272,29 @@ paths:
                 $ref: '#/components/schemas/DocumentStatusHistoryDto'
         '400':
           description: Invalid transition or validation error
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
+        '404':
+          description: Document not found
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
+        '422':
+          description: Invalid status transition according to lifecycle rules
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
 
-  /api/documents/status-history/{id}:
+  /api/v1/documents/status-history/{id}:
     get:
       summary: Retrieve single status history entry by ID
       operationId: getStatusHistoryById
+      tags:
+        - Status History
       parameters:
         - name: id
           in: path
@@ -194,6 +311,10 @@ paths:
                 $ref: '#/components/schemas/DocumentStatusHistoryDto'
         '404':
           description: History entry not found
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
 
 components:
   schemas:
@@ -206,12 +327,90 @@ components:
         - COMPLETED
         - REJECTED
 
-    DocumentDto:
+    DocumentCreateDto:
       type: object
       required:
         - title
       properties:
+        title:
+          type: string
+          maxLength: 255
+          example: Invoice_2026_Q1
+        originalFilename:
+          type: string
+          maxLength: 255
+          example: invoice_q1.pdf
+
+    DocumentUpdateDto:
+      type: object
+      required:
+        - title
+      properties:
+        title:
+          type: string
+          maxLength: 255
+          example: Updated_Invoice_Title
+
+    DocumentResponseDto:
+      type: object
+      properties:
         id:
+          type: integer
+          format: int64
+          example: 1
+        version:
+          type: integer
+          format: int64
+          example: 0
+        title:
+          type: string
+          example: Invoice_2026_Q1
+        originalFilename:
+          type: string
+          example: invoice_q1.pdf
+        contentType:
+          type: string
+          example: application/pdf
+        fileSize:
+          type: integer
+          format: int64
+          example: 1048576
+        storagePath:
+          type: string
+          example: documents/2026/invoice_q1.pdf
+        ocrText:
+          type: string
+          example: Total amount due: 1500 EUR
+        summary:
+          type: string
+          example: Q1 vendor service invoice
+        currentStatus:
+          $ref: '#/components/schemas/DocumentStatus'
+        createdAt:
+          type: string
+          format: date-time
+        modifiedAt:
+          type: string
+          format: date-time
+
+    DocumentSearchQueryDto:
+      type: object
+      required:
+        - query
+      properties:
+        query:
+          type: string
+          minLength: 1
+          maxLength: 100
+          example: Invoice
+
+    DocumentDto:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        version:
           type: integer
           format: int64
         title:
@@ -271,3 +470,81 @@ components:
           type: string
         comment:
           type: string
+
+    LoginRequestDto:
+      type: object
+      required:
+        - username
+        - password
+      properties:
+        username:
+          type: string
+          example: admin
+        password:
+          type: string
+          example: admin123
+
+    LoginResponseDto:
+      type: object
+      properties:
+        token:
+          type: string
+          description: Signed JWT Bearer token
+        username:
+          type: string
+        role:
+          type: string
+        expiresInMs:
+          type: integer
+          format: int64
+
+    UserDto:
+      type: object
+      properties:
+        username:
+          type: string
+        role:
+          type: string
+
+    ProblemDetail:
+      type: object
+      description: Standardized RFC 7807 problem details object
+      properties:
+        type:
+          type: string
+          format: uri
+          example: urn:paperless:problem:document-not-found
+        title:
+          type: string
+          example: Document Not Found
+        status:
+          type: integer
+          example: 404
+        detail:
+          type: string
+          example: Document with id 42 was not found
+        instance:
+          type: string
+          format: uri
+        timestamp:
+          type: string
+          format: date-time
+        error:
+          type: string
+          example: Document Not Found
+        message:
+          type: string
+          example: Document with id 42 was not found
+        invalidParams:
+          type: object
+          additionalProperties:
+            type: string
+          example:
+            title: Title must not be blank
+
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Enter the JWT token generated via /api/v1/auth/login

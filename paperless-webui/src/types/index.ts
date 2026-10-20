@@ -39,3 +39,17 @@ export interface ToastMessage {
   type: 'success' | 'error';
 }
 
+export interface ProblemDetail {
+  type?: string;
+  title?: string;
+  status?: number;
+  detail?: string;
+  instance?: string;
+  invalidParams?: Record<string, string>;
+  message?: string;
+  error?: string;
+  timestamp?: string;
+  [key: string]: unknown;
+}
+
+
