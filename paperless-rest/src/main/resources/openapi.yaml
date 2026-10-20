@@ -30,60 +30,6 @@ paths:
                     type: string
                     example: UP
 
-  /api/v1/auth/login:
-    post:
-      summary: Authenticate user credentials and receive a JWT token
-      operationId: login
-      tags:
-        - Authentication
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/LoginRequestDto'
-      responses:
-        '200':
-          description: Authentication successful, returns JWT bearer token
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/LoginResponseDto'
-        '400':
-          description: Validation error
-          content:
-            application/problem+json:
-              schema:
-                $ref: '#/components/schemas/ProblemDetail'
-        '401':
-          description: Invalid username or password
-          content:
-            application/problem+json:
-              schema:
-                $ref: '#/components/schemas/ProblemDetail'
-
-  /api/v1/auth/me:
-    get:
-      summary: Retrieve authenticated user profile
-      operationId: getCurrentUser
-      tags:
-        - Authentication
-      security:
-        - BearerAuth: []
-      responses:
-        '200':
-          description: Authenticated user details
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/UserDto'
-        '401':
-          description: Missing or invalid JWT token
-          content:
-            application/problem+json:
-              schema:
-                $ref: '#/components/schemas/ProblemDetail'
-
   /api/v1/documents:
     get:
       summary: Retrieve all documents
@@ -469,8 +415,6 @@ components:
           $ref: '#/components/schemas/DocumentStatus'
         previousStatus:
           $ref: '#/components/schemas/DocumentStatus'
-        changedBy:
-          type: string
         timestamp:
           type: string
           format: date-time
@@ -481,48 +425,10 @@ components:
       type: object
       required:
         - status
-        - changedBy
       properties:
         status:
           $ref: '#/components/schemas/DocumentStatus'
-        changedBy:
-          type: string
         comment:
-          type: string
-
-    LoginRequestDto:
-      type: object
-      required:
-        - username
-        - password
-      properties:
-        username:
-          type: string
-          example: admin
-        password:
-          type: string
-          example: admin123
-
-    LoginResponseDto:
-      type: object
-      properties:
-        token:
-          type: string
-          description: Signed JWT Bearer token
-        username:
-          type: string
-        role:
-          type: string
-        expiresInMs:
-          type: integer
-          format: int64
-
-    UserDto:
-      type: object
-      properties:
-        username:
-          type: string
-        role:
           type: string
 
     ProblemDetail:
@@ -560,10 +466,3 @@ components:
             type: string
           example:
             title: Title must not be blank
-
-  securitySchemes:
-    BearerAuth:
-      type: http
-      scheme: bearer
-      bearerFormat: JWT
-      description: Enter the JWT token generated via /api/v1/auth/login

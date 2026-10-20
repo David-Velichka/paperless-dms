@@ -16,7 +16,7 @@ class HealthControllerTest {
     private MockMvc mockMvc;
 
     // GIVEN ein laufender REST-Dienst
-    // WHEN GET /api/v1/health ohne Authentifizierung aufgerufen wird
+    // WHEN GET /api/v1/health aufgerufen wird
     // THEN wird der HTTP-Status 200 OK mit dem Status UP zurückgegeben
     @Test
     void health_ReturnsOkWithStatusUp() throws Exception {
@@ -25,4 +25,3 @@ class HealthControllerTest {
                 .andExpect(jsonPath("$.status").value("UP"));
     }
 }
-

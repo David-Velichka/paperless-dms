@@ -1,6 +1,5 @@
 package com.paperless.rest.service.model;
 
-import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
@@ -29,10 +28,6 @@ public class DocumentStatusHistoryModel {
     private DocumentStatus status;
 
     private DocumentStatus previousStatus;
-
-    @NotBlank(message = "Changed by actor must not be blank")
-    @Size(max = 100, message = "Changed by actor must not exceed 100 characters")
-    private String changedBy;
 
     @NotNull(message = "Timestamp must not be null")
     private OffsetDateTime timestamp;

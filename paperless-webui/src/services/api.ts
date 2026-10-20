@@ -1,40 +1,7 @@
-import { AuthResponse, DocumentItem, DocumentStatus, DocumentStatusHistory, ProblemDetail, UserProfile } from '../types';
+import { DocumentItem, DocumentStatus, DocumentStatusHistory, ProblemDetail } from '../types';
 
 export const API = {
   BASE_URL: '/api/v1',
-  TOKEN_KEY: 'paperless_jwt_token',
-  USER_KEY: 'paperless_user',
-
-  getToken(): string | null {
-    return localStorage.getItem(this.TOKEN_KEY);
-  },
-
-  setToken(token: string, user: UserProfile): void {
-    if (token) {
-      localStorage.setItem(this.TOKEN_KEY, token);
-    }
-    if (user) {
-      localStorage.setItem(this.USER_KEY, JSON.stringify(user));
-    }
-  },
-
-  clearToken(): void {
-    localStorage.removeItem(this.TOKEN_KEY);
-    localStorage.removeItem(this.USER_KEY);
-  },
-
-  getUser(): UserProfile | null {
-    try {
-      const data = localStorage.getItem(this.USER_KEY);
-      return data ? JSON.parse(data) : null;
-    } catch {
-      return null;
-    }
-  },
-
-  isAuthenticated(): boolean {
-    return Boolean(this.getToken());
-  },
 
   async parseError(res: Response, fallback: string): Promise<string> {
     try {
@@ -56,59 +23,6 @@ export const API = {
     return `${fallback} (${res.status})`;
   },
 
-  async login(username: string, password: string): Promise<AuthResponse> {
-    const res = await fetch(`${this.BASE_URL}/auth/login`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({ username, password })
-    });
-
-    if (!res.ok) {
-      const errorMessage = await this.parseError(res, 'Invalid username or password');
-      throw new Error(errorMessage);
-    }
-
-    const data: AuthResponse = await res.json();
-    this.setToken(data.token, { username: data.username, role: data.role });
-    return data;
-  },
-
-  async getCurrentUser(): Promise<UserProfile> {
-    const res = await this.fetchWithAuth(`${this.BASE_URL}/auth/me`);
-    if (!res.ok) {
-      const errorMessage = await this.parseError(res, 'Failed to fetch user profile');
-      throw new Error(errorMessage);
-    }
-    return res.json();
-  },
-
-  logout(): void {
-    this.clearToken();
-    window.dispatchEvent(new CustomEvent('auth:logout'));
-  },
-
-  async fetchWithAuth(url: string, options: RequestInit = {}): Promise<Response> {
-    const headers = new Headers(options.headers || {});
-    const token = this.getToken();
-    if (token) {
-      headers.set('Authorization', `Bearer ${token}`);
-    }
-
-    const response = await fetch(url, {
-      ...options,
-      headers
-    });
-
-    if (response.status === 401 && token) {
-      this.clearToken();
-      window.dispatchEvent(new CustomEvent('auth:unauthorized'));
-    }
-
-    return response;
-  },
-
   async checkHealth(): Promise<boolean> {
     try {
       const res = await fetch(`${this.BASE_URL}/health`, { method: 'GET' });
@@ -124,7 +38,13 @@ export const API = {
       ? `${this.BASE_URL}/documents/search?query=${encodeURIComponent(trimmed)}`
       : `${this.BASE_URL}/documents`;
 
-    const res = await this.fetchWithAuth(url);
+    const res = await fetch(url, {
+      method: 'GET',
+      headers: {
+        Accept: 'application/json'
+      }
+    });
+
     if (!res.ok) {
       const errorMessage = await this.parseError(res, 'Failed to fetch documents');
       throw new Error(errorMessage);
@@ -133,7 +53,13 @@ export const API = {
   },
 
   async getDocumentById(id: number): Promise<DocumentItem> {
-    const res = await this.fetchWithAuth(`${this.BASE_URL}/documents/${id}`);
+    const res = await fetch(`${this.BASE_URL}/documents/${id}`, {
+      method: 'GET',
+      headers: {
+        Accept: 'application/json'
+      }
+    });
+
     if (!res.ok) {
       const errorMessage = await this.parseError(res, `Document ${id} not found`);
       throw new Error(errorMessage);
@@ -148,7 +74,7 @@ export const API = {
       formData.append('title', title.trim());
     }
 
-    const res = await this.fetchWithAuth(`${this.BASE_URL}/documents/upload`, {
+    const res = await fetch(`${this.BASE_URL}/documents/upload`, {
       method: 'POST',
       body: formData
     });
@@ -161,7 +87,7 @@ export const API = {
   },
 
   async deleteDocument(id: number): Promise<boolean> {
-    const res = await this.fetchWithAuth(`${this.BASE_URL}/documents/${id}`, {
+    const res = await fetch(`${this.BASE_URL}/documents/${id}`, {
       method: 'DELETE'
     });
 
@@ -169,12 +95,18 @@ export const API = {
       return true;
     }
 
-    const errorMessage = await this.parseError(res, `Delete failed`);
+    const errorMessage = await this.parseError(res, 'Delete failed');
     throw new Error(errorMessage);
   },
 
   async getDocumentStatus(id: number): Promise<{ status: DocumentStatus }> {
-    const res = await this.fetchWithAuth(`${this.BASE_URL}/documents/${id}/status`);
+    const res = await fetch(`${this.BASE_URL}/documents/${id}/status`, {
+      method: 'GET',
+      headers: {
+        Accept: 'application/json'
+      }
+    });
+
     if (!res.ok) {
       const errorMessage = await this.parseError(res, 'Failed to fetch status');
       throw new Error(errorMessage);
@@ -185,19 +117,18 @@ export const API = {
   async updateDocumentStatus(
     id: number,
     targetStatus: DocumentStatus,
-    changedBy: string = 'Web User',
     comment: string = ''
   ): Promise<{ status: DocumentStatus }> {
     const payload = {
       status: targetStatus,
-      changedBy,
       comment
     };
 
-    const res = await this.fetchWithAuth(`${this.BASE_URL}/documents/${id}/status`, {
+    const res = await fetch(`${this.BASE_URL}/documents/${id}/status`, {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
+        Accept: 'application/json'
       },
       body: JSON.stringify(payload)
     });
@@ -210,7 +141,13 @@ export const API = {
   },
 
   async getDocumentHistory(id: number): Promise<DocumentStatusHistory[]> {
-    const res = await this.fetchWithAuth(`${this.BASE_URL}/documents/${id}/history`);
+    const res = await fetch(`${this.BASE_URL}/documents/${id}/history`, {
+      method: 'GET',
+      headers: {
+        Accept: 'application/json'
+      }
+    });
+
     if (!res.ok) {
       const errorMessage = await this.parseError(res, 'Failed to fetch history');
       throw new Error(errorMessage);
@@ -218,4 +155,3 @@ export const API = {
     return res.json();
   }
 };
-

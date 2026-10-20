@@ -11,12 +11,10 @@ interface DetailModalProps {
   document: DocumentItem | null;
   history: DocumentStatusHistory[];
   isLoadingHistory: boolean;
-  defaultActor: string;
   onClose: () => void;
   onUpdateStatus: (
     docId: number,
     targetStatus: DocumentStatus,
-    actor: string,
     comment: string
   ) => Promise<void>;
 }
@@ -25,12 +23,10 @@ export const DetailModal: React.FC<DetailModalProps> = ({
   document,
   history,
   isLoadingHistory,
-  defaultActor,
   onClose,
   onUpdateStatus
 }) => {
   const [selectedNextStatus, setSelectedNextStatus] = useState<DocumentStatus | ''>('');
-  const [actor, setActor] = useState(defaultActor);
   const [comment, setComment] = useState('');
   const [validationError, setValidationError] = useState<string | null>(null);
   const [isUpdating, setIsUpdating] = useState(false);
@@ -40,11 +36,10 @@ export const DetailModal: React.FC<DetailModalProps> = ({
       const docStatus = getDocStatus(document);
       const nextStates = STATUS_TRANSITIONS[docStatus] || [];
       setSelectedNextStatus(nextStates.length > 0 ? nextStates[0] : '');
-      setActor(defaultActor);
       setComment('');
       setValidationError(null);
     }
-  }, [document, defaultActor]);
+  }, [document]);
 
   if (!document) return null;
 
@@ -56,14 +51,6 @@ export const DetailModal: React.FC<DetailModalProps> = ({
       setValidationError('Please select a valid target status.');
       return;
     }
-    if (!actor.trim()) {
-      setValidationError('Actor (Changed By) is required.');
-      return;
-    }
-    if (actor.length > 100) {
-      setValidationError('Actor name must not exceed 100 characters.');
-      return;
-    }
     if (comment.length > 500) {
       setValidationError('Comment must not exceed 500 characters.');
       return;
@@ -72,7 +59,7 @@ export const DetailModal: React.FC<DetailModalProps> = ({
     setValidationError(null);
     setIsUpdating(true);
     try {
-      await onUpdateStatus(document.id, selectedNextStatus, actor.trim(), comment.trim());
+      await onUpdateStatus(document.id, selectedNextStatus, comment.trim());
     } catch (err: unknown) {
       if (err instanceof Error) {
         setValidationError(err.message);
@@ -247,39 +234,18 @@ export const DetailModal: React.FC<DetailModalProps> = ({
                   ))}
                 </select>
               </div>
-              <div
-                style={{
-                  display: 'grid',
-                  gridTemplateColumns: '1fr 2fr',
-                  gap: '0.75rem',
-                  marginBottom: '0.75rem'
-                }}
-              >
-                <div>
-                  <label htmlFor="actor-input" className="form-label">
-                    Actor (Changed By)
-                  </label>
-                  <input
-                    type="text"
-                    id="actor-input"
-                    className="form-control"
-                    value={actor}
-                    onChange={(e) => setActor(e.target.value)}
-                  />
-                </div>
-                <div>
-                  <label htmlFor="comment-input" className="form-label">
-                    Transition Comment / Rationale
-                  </label>
-                  <input
-                    type="text"
-                    id="comment-input"
-                    className="form-control"
-                    placeholder="Optional audit comment"
-                    value={comment}
-                    onChange={(e) => setComment(e.target.value)}
-                  />
-                </div>
+              <div className="form-group" style={{ marginBottom: '0.75rem' }}>
+                <label htmlFor="comment-input" className="form-label">
+                  Transition Comment / Rationale
+                </label>
+                <input
+                  type="text"
+                  id="comment-input"
+                  className="form-control"
+                  placeholder="Optional audit comment"
+                  value={comment}
+                  onChange={(e) => setComment(e.target.value)}
+                />
               </div>
               {validationError && (
                 <div
@@ -302,7 +268,7 @@ export const DetailModal: React.FC<DetailModalProps> = ({
                 id="btn-update-status"
                 className="btn btn-primary btn-sm"
                 style={{ width: '100%', justifyContent: 'center' }}
-                disabled={isUpdating || !actor.trim() || !selectedNextStatus}
+                disabled={isUpdating || !selectedNextStatus}
                 onClick={handleApplyTransition}
               >
                 {isUpdating ? 'Updating...' : 'Apply Transition'}
@@ -320,7 +286,7 @@ export const DetailModal: React.FC<DetailModalProps> = ({
                 color: 'var(--text-primary)'
               }}
             >
-              Lifecycle Audit History (1:n Audit Log)
+              Lifecycle Audit History
             </h3>
             <div id="history-timeline" className="timeline">
               {isLoadingHistory ? (
@@ -340,9 +306,6 @@ export const DetailModal: React.FC<DetailModalProps> = ({
                         {item.status}
                       </span>
                       <span className="timeline-time">{formatDate(item.timestamp)}</span>
-                    </div>
-                    <div className="timeline-actor">
-                      Changed by: {item.changedBy || 'System'}
                     </div>
                     {item.comment && (
                       <div className="timeline-comment">{item.comment}</div>
@@ -367,4 +330,3 @@ export const DetailModal: React.FC<DetailModalProps> = ({
     </div>
   );
 };
-

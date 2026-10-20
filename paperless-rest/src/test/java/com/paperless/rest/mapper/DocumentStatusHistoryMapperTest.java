@@ -27,7 +27,6 @@ class DocumentStatusHistoryMapperTest {
                 .documentId(10L)
                 .status(DocumentStatus.PROCESSING)
                 .previousStatus(DocumentStatus.RECEIVED)
-                .changedBy("worker")
                 .timestamp(now)
                 .comment("Processing")
                 .build();
@@ -39,7 +38,6 @@ class DocumentStatusHistoryMapperTest {
         assertEquals(10L, dto.getDocumentId());
         assertEquals(DocumentStatus.PROCESSING, dto.getStatus());
         assertEquals(DocumentStatus.RECEIVED, dto.getPreviousStatus());
-        assertEquals("worker", dto.getChangedBy());
         assertEquals(now, dto.getTimestamp());
         assertEquals("Processing", dto.getComment());
     }
@@ -55,7 +53,6 @@ class DocumentStatusHistoryMapperTest {
                 .documentId(20L)
                 .status(DocumentStatus.COMPLETED)
                 .previousStatus(DocumentStatus.REVIEW_PENDING)
-                .changedBy("reviewer")
                 .timestamp(now)
                 .comment("Approved")
                 .build();
@@ -78,7 +75,6 @@ class DocumentStatusHistoryMapperTest {
                 .documentId(30L)
                 .status(DocumentStatus.REJECTED)
                 .previousStatus(DocumentStatus.REVIEW_PENDING)
-                .changedBy("admin")
                 .timestamp(now)
                 .comment("Declined")
                 .build();
@@ -101,7 +97,6 @@ class DocumentStatusHistoryMapperTest {
                 .documentId(40L)
                 .status(DocumentStatus.RECEIVED)
                 .previousStatus(null)
-                .changedBy("system")
                 .timestamp(now)
                 .comment("Initial")
                 .build();

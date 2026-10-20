@@ -41,7 +41,6 @@ class DocumentStatusHistoryPersistenceServiceTest {
                 .documentId(10L)
                 .status(DocumentStatus.PROCESSING)
                 .previousStatus(DocumentStatus.RECEIVED)
-                .changedBy("worker")
                 .timestamp(OffsetDateTime.now())
                 .comment("OCR started")
                 .build();
@@ -51,7 +50,6 @@ class DocumentStatusHistoryPersistenceServiceTest {
                 .documentId(10L)
                 .status(DocumentStatus.PROCESSING)
                 .previousStatus(DocumentStatus.RECEIVED)
-                .changedBy("worker")
                 .timestamp(OffsetDateTime.now())
                 .comment("OCR started")
                 .build();

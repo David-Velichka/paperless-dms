@@ -2,13 +2,13 @@
 
 ## 1. Selected Use-Case
 - Choice: Recommendation 2 from course suggestions (Document state with history log).
-- Goal: Track lifecycle state of each document (e.g., received, processing, completed, rejected) with a full, immutable audit trail (who changed what, when, and why).
+- Goal: Track lifecycle state of each document (e.g., received, processing, completed, rejected) with a full, immutable audit trail (what state changed, when, and why).
 
 ---
 
 ## 2. Entity Definitions (1:n Relation)
 
-### A. Document Entity (Updated)
+### A. Document Entity
 - `currentStatus`: Current lifecycle state of the document (`RECEIVED`, `PROCESSING`, `REVIEW_PENDING`, `COMPLETED`, `REJECTED`).
 
 ### B. DocumentStatusHistory Entity
@@ -16,7 +16,6 @@
 - `documentId`: Long (FK to documents table, not null)
 - `status`: String / Enum (new state)
 - `previousStatus`: String / Enum (state before this change, null on initial upload)
-- `changedBy`: String (actor: username or system worker, max 100 chars, not null)
 - `timestamp`: OffsetDateTime (timestamp of transition, not null)
 - `comment`: String (optional note / reason, max 500 chars)
 
@@ -32,7 +31,6 @@
 ### Validation
 - Transition check: Target status must be a valid follow-up state from current status (e.g., cannot jump directly from `REJECTED` to `COMPLETED`).
 - Document check: Document ID must exist in database before creating history entry.
-- Actor check: `changedBy` must not be blank or null, max 100 characters.
 - Comment check: Optional, but max 500 characters if provided.
 - Input validation: Jakarta Bean Validation (`@NotNull`, `@Size`) at boundary, custom business checks in service.
 
@@ -43,11 +41,11 @@
 - Rule 4 (Lifecycle Binding): When a document is deleted, all associated status history entries are cascade-deleted.
 
 ### Logic
-- `changeStatus(documentId, targetStatus, changedBy, comment)`:
+- `changeStatus(documentId, targetStatus, comment)`:
   1. Fetch Document by ID -> throw `BusinessLayerException` if missing.
   2. Verify transition is permitted (`currentStatus -> targetStatus`) -> throw `BusinessLayerException` if invalid.
   3. Update `document.currentStatus = targetStatus`.
-  4. Create `DocumentStatusHistory` record with `previousStatus = oldStatus`, `status = targetStatus`, `changedBy`, `timestamp = now()`, `comment`.
+  4. Create `DocumentStatusHistory` record with `previousStatus = oldStatus`, `status = targetStatus`, `timestamp = now()`, `comment`.
   5. Save Document and save History in single `@Transactional` method.
   6. Return updated domain model.
 - `getStatusHistory(documentId)`:
@@ -70,11 +68,11 @@
 1. **Step 1: Document Ingestion (Upload)**
    - Client sends PDF via `POST /api/documents/upload`.
    - Business service saves document with `currentStatus = RECEIVED`.
-   - Business service logs initial history record: `(status: RECEIVED, changedBy: "uploader", comment: "Initial upload")`.
+   - Business service logs initial history record: `(status: RECEIVED, comment: "Initial upload")`.
 
 2. **Step 2: Processing (OCR / Inspection)**
    - Background worker or processor picks up document.
-   - Status transitions to `PROCESSING` with `changedBy = "ocr-worker"`.
+   - Status transitions to `PROCESSING`.
    - History entry recorded.
 
 3. **Step 3: Verification (Review Pending)**
@@ -85,10 +83,17 @@
 4. **Step 4: Final Decision (Approval / Rejection)**
    - Reviewer / User inspects document via WebUI.
    - Action: Approve -> status becomes `COMPLETED`.
-   - Action: Reject -> status becomes `REJECTED` with required comment.
+   - Action: Reject -> status becomes `REJECTED` with optional comment.
    - History entry recorded.
 
-5. **Step 5: Audit Trail Query**
-   - User views document details in UI.
-   - Client queries `GET /api/documents/{id}/history`.
-   - Returns full chronological log of all transitions, timestamps, actors, and comments.
+---
+
+## 5. REST Endpoints Summary
+
+- `POST /api/documents/upload`: Ingest new document, auto-assign `RECEIVED` status.
+- `GET /api/documents`: List documents (includes `currentStatus`).
+- `GET /api/documents/{id}`: Document details (includes `currentStatus`).
+- `POST /api/documents/{id}/status`: Transition document to new status (validates lifecycle graph).
+- `GET /api/documents/{id}/history`: Fetch full audit history for document (chronological descending).
+- `GET /api/documents/status-history/{id}`: Fetch single status history record by its ID.
+- `DELETE /api/documents/{id}`: Delete document and cascade delete all its history records.

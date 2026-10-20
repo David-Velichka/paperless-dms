@@ -18,19 +18,7 @@ export interface DocumentStatusHistory {
   documentId: number;
   status: DocumentStatus;
   timestamp: string;
-  changedBy: string;
   comment?: string;
-}
-
-export interface UserProfile {
-  username: string;
-  role: string;
-}
-
-export interface AuthResponse {
-  token: string;
-  username: string;
-  role: string;
 }
 
 export interface ToastMessage {
@@ -51,5 +39,3 @@ export interface ProblemDetail {
   timestamp?: string;
   [key: string]: unknown;
 }
-
-

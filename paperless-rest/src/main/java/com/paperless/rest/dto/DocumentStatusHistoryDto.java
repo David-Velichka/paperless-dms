@@ -21,7 +21,6 @@ public class DocumentStatusHistoryDto {
     private Long documentId;
     private DocumentStatus status;
     private DocumentStatus previousStatus;
-    private String changedBy;
     private OffsetDateTime timestamp;
     private String comment;
 }

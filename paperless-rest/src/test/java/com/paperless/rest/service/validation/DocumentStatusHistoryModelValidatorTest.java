@@ -31,7 +31,6 @@ class DocumentStatusHistoryModelValidatorTest {
                 .documentId(1L)
                 .status(DocumentStatus.PROCESSING)
                 .previousStatus(DocumentStatus.RECEIVED)
-                .changedBy("worker")
                 .timestamp(OffsetDateTime.now())
                 .comment("OCR worker started")
                 .build();
@@ -58,30 +57,12 @@ class DocumentStatusHistoryModelValidatorTest {
         DocumentStatusHistoryModel model = DocumentStatusHistoryModel.builder()
                 .documentId(null)
                 .status(DocumentStatus.PROCESSING)
-                .changedBy("worker")
                 .timestamp(OffsetDateTime.now())
                 .build();
 
         BusinessLayerException ex = assertThrows(BusinessLayerException.class,
                 () -> historyModelValidator.validateOrThrow(model));
         assertTrue(ex.getMessage().contains("Document id must not be null"));
-    }
-
-    // GIVEN ein DocumentStatusHistoryModel mit leerem Akteur (changedBy)
-    // WHEN validateOrThrow aufgerufen wird
-    // THEN wird eine BusinessLayerException geworfen
-    @Test
-    void validateOrThrow_WithBlankChangedBy_ThrowsBusinessLayerException() {
-        DocumentStatusHistoryModel model = DocumentStatusHistoryModel.builder()
-                .documentId(1L)
-                .status(DocumentStatus.PROCESSING)
-                .changedBy("   ")
-                .timestamp(OffsetDateTime.now())
-                .build();
-
-        BusinessLayerException ex = assertThrows(BusinessLayerException.class,
-                () -> historyModelValidator.validateOrThrow(model));
-        assertTrue(ex.getMessage().contains("Changed by actor must not be blank"));
     }
 
     // GIVEN ein DocumentStatusHistoryModel mit einem Kommentar über 500 Zeichen
@@ -93,7 +74,6 @@ class DocumentStatusHistoryModelValidatorTest {
         DocumentStatusHistoryModel model = DocumentStatusHistoryModel.builder()
                 .documentId(1L)
                 .status(DocumentStatus.PROCESSING)
-                .changedBy("worker")
                 .timestamp(OffsetDateTime.now())
                 .comment(longComment)
                 .build();
@@ -103,4 +83,3 @@ class DocumentStatusHistoryModelValidatorTest {
         assertTrue(ex.getMessage().contains("Comment must not exceed 500 characters"));
     }
 }
-

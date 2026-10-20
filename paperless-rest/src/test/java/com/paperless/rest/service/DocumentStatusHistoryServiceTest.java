@@ -54,7 +54,6 @@ class DocumentStatusHistoryServiceTest {
                 .documentId(1L)
                 .status(DocumentStatus.PROCESSING)
                 .previousStatus(DocumentStatus.RECEIVED)
-                .changedBy("worker")
                 .timestamp(OffsetDateTime.now())
                 .comment("OCR in progress")
                 .build();
@@ -71,11 +70,10 @@ class DocumentStatusHistoryServiceTest {
         when(documentStatusHistoryPersistenceService.save(any(DocumentStatusHistoryModel.class))).thenReturn(sampleHistoryModel);
 
         DocumentStatusHistoryModel result = documentStatusHistoryService.changeStatus(
-                1L, DocumentStatus.PROCESSING, "worker", "OCR in progress");
+                1L, DocumentStatus.PROCESSING, "OCR in progress");
 
         assertNotNull(result);
         assertEquals(DocumentStatus.PROCESSING, result.getStatus());
-        assertEquals("worker", result.getChangedBy());
         verify(historyModelValidator, times(1)).validateOrThrow(any(DocumentStatusHistoryModel.class));
         verify(documentPersistenceService, times(1)).save(any(DocumentModel.class));
         verify(documentStatusHistoryPersistenceService, times(1)).save(any(DocumentStatusHistoryModel.class));
@@ -87,7 +85,7 @@ class DocumentStatusHistoryServiceTest {
     @Test
     void changeStatus_WithNullDocumentId_ThrowsBusinessLayerException() {
         assertThrows(BusinessLayerException.class,
-                () -> documentStatusHistoryService.changeStatus(null, DocumentStatus.PROCESSING, "user", null));
+                () -> documentStatusHistoryService.changeStatus(null, DocumentStatus.PROCESSING, null));
         verify(documentStatusHistoryPersistenceService, never()).save(any());
     }
 
@@ -97,7 +95,7 @@ class DocumentStatusHistoryServiceTest {
     @Test
     void changeStatus_WithNullTargetStatus_ThrowsBusinessLayerException() {
         assertThrows(BusinessLayerException.class,
-                () -> documentStatusHistoryService.changeStatus(1L, null, "user", null));
+                () -> documentStatusHistoryService.changeStatus(1L, null, null));
         verify(documentStatusHistoryPersistenceService, never()).save(any());
     }
 
@@ -109,7 +107,7 @@ class DocumentStatusHistoryServiceTest {
         when(documentPersistenceService.findById(99L)).thenReturn(Optional.empty());
 
         assertThrows(BusinessLayerException.class,
-                () -> documentStatusHistoryService.changeStatus(99L, DocumentStatus.PROCESSING, "user", null));
+                () -> documentStatusHistoryService.changeStatus(99L, DocumentStatus.PROCESSING, null));
         verify(documentStatusHistoryPersistenceService, never()).save(any());
     }
 
@@ -123,7 +121,7 @@ class DocumentStatusHistoryServiceTest {
         when(documentPersistenceService.findById(1L)).thenReturn(Optional.of(sampleDocumentModel));
 
         assertThrows(BusinessLayerException.class,
-                () -> documentStatusHistoryService.changeStatus(1L, DocumentStatus.PROCESSING, "user", null));
+                () -> documentStatusHistoryService.changeStatus(1L, DocumentStatus.PROCESSING, null));
         verify(documentStatusHistoryPersistenceService, never()).save(any());
     }
 
@@ -133,11 +131,11 @@ class DocumentStatusHistoryServiceTest {
     @Test
     void changeStatus_WithValidationFailure_ThrowsBusinessLayerException() {
         when(documentPersistenceService.findById(1L)).thenReturn(Optional.of(sampleDocumentModel));
-        doThrow(new BusinessLayerException("Validation failed for StatusHistory: Changed by actor must not be blank"))
+        doThrow(new BusinessLayerException("Validation failed for StatusHistory: Comment must not exceed 500 characters"))
                 .when(historyModelValidator).validateOrThrow(any(DocumentStatusHistoryModel.class));
 
         assertThrows(BusinessLayerException.class,
-                () -> documentStatusHistoryService.changeStatus(1L, DocumentStatus.PROCESSING, " ", null));
+                () -> documentStatusHistoryService.changeStatus(1L, DocumentStatus.PROCESSING, "a".repeat(501)));
         verify(documentStatusHistoryPersistenceService, never()).save(any());
     }
 
@@ -187,14 +185,13 @@ class DocumentStatusHistoryServiceTest {
                 .id(1L)
                 .documentId(5L)
                 .status(DocumentStatus.RECEIVED)
-                .changedBy("uploader")
                 .comment("Initial upload")
                 .build();
 
         doNothing().when(historyModelValidator).validateOrThrow(any(DocumentStatusHistoryModel.class));
         when(documentStatusHistoryPersistenceService.save(any(DocumentStatusHistoryModel.class))).thenReturn(initialModel);
 
-        DocumentStatusHistoryModel result = documentStatusHistoryService.createInitialHistory(5L, "uploader", "Initial upload");
+        DocumentStatusHistoryModel result = documentStatusHistoryService.createInitialHistory(5L, "Initial upload");
 
         assertNotNull(result);
         assertEquals(DocumentStatus.RECEIVED, result.getStatus());
@@ -208,7 +205,7 @@ class DocumentStatusHistoryServiceTest {
     @Test
     void createInitialHistory_WithNullId_ThrowsBusinessLayerException() {
         assertThrows(BusinessLayerException.class,
-                () -> documentStatusHistoryService.createInitialHistory(null, "uploader", "test"));
+                () -> documentStatusHistoryService.createInitialHistory(null, "test"));
         verify(documentStatusHistoryPersistenceService, never()).save(any());
     }
 

@@ -34,10 +34,10 @@ public class DocumentStatusHistoryController {
     public ResponseEntity<DocumentStatusHistoryDto> changeDocumentStatus(
             @PathVariable Long documentId,
             @Valid @RequestBody DocumentStatusChangeRequestDto request) {
-        log.info("REST request to change status of document {} to {} by {}",
-                documentId, request.getStatus(), request.getChangedBy());
+        log.info("REST request to change status of document {} to {}",
+                documentId, request.getStatus());
         DocumentStatusHistoryModel result = documentStatusHistoryService.changeStatus(
-                documentId, request.getStatus(), request.getChangedBy(), request.getComment());
+                documentId, request.getStatus(), request.getComment());
         return ResponseEntity.status(HttpStatus.CREATED).body(documentStatusHistoryMapper.toDto(result));
     }
 

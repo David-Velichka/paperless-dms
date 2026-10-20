@@ -26,7 +26,6 @@ class DocumentStatusHistoryEntityMapperTest {
                 .documentId(10L)
                 .status(DocumentStatus.PROCESSING)
                 .previousStatus(DocumentStatus.RECEIVED)
-                .changedBy("worker")
                 .timestamp(now)
                 .comment("Processing")
                 .build();
@@ -38,7 +37,6 @@ class DocumentStatusHistoryEntityMapperTest {
         assertEquals(10L, entity.getDocumentId());
         assertEquals(DocumentStatus.PROCESSING, entity.getStatus());
         assertEquals(DocumentStatus.RECEIVED, entity.getPreviousStatus());
-        assertEquals("worker", entity.getChangedBy());
         assertEquals(now, entity.getTimestamp());
         assertEquals("Processing", entity.getComment());
     }
@@ -54,7 +52,6 @@ class DocumentStatusHistoryEntityMapperTest {
                 .documentId(20L)
                 .status(DocumentStatus.COMPLETED)
                 .previousStatus(DocumentStatus.REVIEW_PENDING)
-                .changedBy("reviewer")
                 .timestamp(now)
                 .comment("Approved")
                 .build();
@@ -66,7 +63,6 @@ class DocumentStatusHistoryEntityMapperTest {
         assertEquals(20L, model.getDocumentId());
         assertEquals(DocumentStatus.COMPLETED, model.getStatus());
         assertEquals(DocumentStatus.REVIEW_PENDING, model.getPreviousStatus());
-        assertEquals("reviewer", model.getChangedBy());
         assertEquals(now, model.getTimestamp());
         assertEquals("Approved", model.getComment());
     }

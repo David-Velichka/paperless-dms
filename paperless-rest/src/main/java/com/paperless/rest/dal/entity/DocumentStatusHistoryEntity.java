@@ -38,9 +38,6 @@ public class DocumentStatusHistoryEntity {
     @Column(name = "previous_status", length = 50)
     private DocumentStatus previousStatus;
 
-    @Column(name = "changed_by", nullable = false, length = 100)
-    private String changedBy;
-
     @Column(nullable = false, updatable = false)
     private OffsetDateTime timestamp;
 

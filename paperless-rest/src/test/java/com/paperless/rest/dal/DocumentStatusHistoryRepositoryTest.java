@@ -33,7 +33,6 @@ class DocumentStatusHistoryRepositoryTest {
                 .documentId(101L)
                 .status(DocumentStatus.RECEIVED)
                 .previousStatus(null)
-                .changedBy("system")
                 .comment("Initial creation")
                 .build();
 
@@ -42,7 +41,6 @@ class DocumentStatusHistoryRepositoryTest {
         assertNotNull(saved.getId());
         assertNotNull(saved.getTimestamp());
         assertEquals(DocumentStatus.RECEIVED, saved.getStatus());
-        assertEquals("system", saved.getChangedBy());
 
         Optional<DocumentStatusHistoryEntity> found = documentStatusHistoryRepository.findById(saved.getId());
         assertTrue(found.isPresent());
@@ -60,7 +58,6 @@ class DocumentStatusHistoryRepositoryTest {
                 .documentId(201L)
                 .status(DocumentStatus.RECEIVED)
                 .previousStatus(null)
-                .changedBy("user1")
                 .timestamp(now.minusHours(2))
                 .comment("Upload")
                 .build();
@@ -69,7 +66,6 @@ class DocumentStatusHistoryRepositoryTest {
                 .documentId(201L)
                 .status(DocumentStatus.PROCESSING)
                 .previousStatus(DocumentStatus.RECEIVED)
-                .changedBy("ocr-worker")
                 .timestamp(now.minusHours(1))
                 .comment("Processing")
                 .build();
@@ -78,7 +74,6 @@ class DocumentStatusHistoryRepositoryTest {
                 .documentId(999L)
                 .status(DocumentStatus.RECEIVED)
                 .previousStatus(null)
-                .changedBy("user2")
                 .timestamp(now)
                 .build();
 
@@ -101,7 +96,6 @@ class DocumentStatusHistoryRepositoryTest {
         DocumentStatusHistoryEntity entry = DocumentStatusHistoryEntity.builder()
                 .documentId(301L)
                 .status(DocumentStatus.RECEIVED)
-                .changedBy("system")
                 .build();
 
         documentStatusHistoryRepository.save(entry);

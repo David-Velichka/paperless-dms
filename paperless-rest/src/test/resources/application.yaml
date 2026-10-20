@@ -26,12 +26,3 @@ spring:
 
   flyway:
     enabled: false
-
-jwt:
-  secret: test-secret-key-for-unit-testing-paperless-swen3-project-32chars
-  expiration-ms: 3600000
-
-security:
-  jwt:
-    enabled: false
-

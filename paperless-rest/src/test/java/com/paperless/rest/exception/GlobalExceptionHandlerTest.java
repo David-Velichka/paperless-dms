@@ -89,22 +89,6 @@ class GlobalExceptionHandlerTest {
         assertEquals(URI.create("urn:paperless:problem:document-conflict"), problem.getType());
     }
 
-    // GIVEN eine InvalidCredentialsException bei fehlerhafter Authentifizierung
-    // WHEN die handleInvalidCredentials-Methode aufgerufen wird
-    // THEN wird ein RFC 7807 ProblemDetail mit HTTP-Status 401 zurückgegeben
-    @Test
-    void handleInvalidCredentials_ReturnsProblemDetail401() {
-        InvalidCredentialsException ex = new InvalidCredentialsException("Bad username or password");
-
-        ProblemDetail problem = handler.handleInvalidCredentials(ex);
-
-        assertNotNull(problem);
-        assertEquals(HttpStatus.UNAUTHORIZED.value(), problem.getStatus());
-        assertEquals("Unauthorized", problem.getTitle());
-        assertEquals("Bad username or password", problem.getDetail());
-        assertEquals(URI.create("urn:paperless:problem:unauthorized"), problem.getType());
-    }
-
     // GIVEN eine BusinessLayerException bei einem allgemeinen Geschäftslogikfehler
     // WHEN die handleBusinessLayerException-Methode aufgerufen wird
     // THEN wird ein RFC 7807 ProblemDetail mit HTTP-Status 400 zurückgegeben
@@ -177,4 +161,3 @@ class GlobalExceptionHandlerTest {
         assertEquals(URI.create("urn:paperless:problem:internal-server-error"), problem.getType());
     }
 }
-
