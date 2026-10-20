@@ -1,5 +1,5 @@
 ### Paperless DMS - REST API Tests (Sprint 1: Document Upload)
-@baseUrl = http://localhost:8081/api
+@baseUrl = http://localhost:8081/api/v1
 
 ### 1. Retrieve all documents (initial list)
 GET {{baseUrl}}/documents

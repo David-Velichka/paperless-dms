@@ -1,5 +1,5 @@
 ### Paperless DMS - REST API Tests (Class 4: Custom Use-Case - Document Status & History)
-@baseUrl = http://localhost:8081/api
+@baseUrl = http://localhost:8081/api/v1
 
 ### 1. Upload a document to start lifecycle (Initial status will be RECEIVED)
 POST {{baseUrl}}/documents/upload
@@ -55,7 +55,7 @@ Content-Type: application/json
 GET {{baseUrl}}/documents/1/history
 Accept: application/json
 
-### 8. Attempt Illegal Status Transition: COMPLETED -> PROCESSING (Should return 400 Bad Request)
+### 8. Attempt Illegal Status Transition: COMPLETED -> PROCESSING (Should return 422 Unprocessable Content)
 POST {{baseUrl}}/documents/1/status
 Content-Type: application/json
 

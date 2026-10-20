@@ -2,7 +2,7 @@
 # Test Script: Document Upload REST-API (Sprint 1)
 # Usage: ./document-upload-tests.sh [BASE_URL]
 
-BASE_URL="${1:-http://localhost:8081/api}"
+BASE_URL="${1:-http://localhost:8081/api/v1}"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SAMPLE_PDF="${SCRIPT_DIR}/sample-documents/sample.pdf"
 SAMPLE_TXT="${SCRIPT_DIR}/sample-documents/sample.txt"
@@ -11,25 +11,25 @@ echo "=== Paperless DMS Document Upload API Tests ==="
 echo "Target: ${BASE_URL}"
 echo ""
 
-echo "--- 1. Testing GET /api/documents ---"
+echo "--- 1. Testing GET /api/v1/documents ---"
 curl -s -X GET "${BASE_URL}/documents" \
   -H "Accept: application/json" | grep -o '.*'
 echo ""
 
-echo "--- 2. Testing POST /api/documents/upload with PDF and title ---"
+echo "--- 2. Testing POST /api/v1/documents/upload with PDF and title ---"
 UPLOAD_RESP=$(curl -s -X POST "${BASE_URL}/documents/upload" \
   -F "title=Sample Invoice 2026" \
   -F "file=@${SAMPLE_PDF};type=application/pdf")
 echo "Response: ${UPLOAD_RESP}"
 echo ""
 
-echo "--- 3. Testing POST /api/documents/upload without title (default filename) ---"
+echo "--- 3. Testing POST /api/v1/documents/upload without title (default filename) ---"
 UPLOAD_TXT_RESP=$(curl -s -X POST "${BASE_URL}/documents/upload" \
   -F "file=@${SAMPLE_TXT};type=text/plain")
 echo "Response: ${UPLOAD_TXT_RESP}"
 echo ""
 
-echo "--- 4. Testing POST /api/documents/upload error case (empty file -> 400 Bad Request) ---"
+echo "--- 4. Testing POST /api/v1/documents/upload error case (empty file -> 400 Bad Request) ---"
 EMPTY_FILE="${SCRIPT_DIR}/empty_temp.tmp"
 touch "${EMPTY_FILE}"
 HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" -X POST "${BASE_URL}/documents/upload" \
@@ -38,7 +38,7 @@ rm -f "${EMPTY_FILE}"
 echo "HTTP Status (expected 400): ${HTTP_CODE}"
 echo ""
 
-echo "--- 5. Testing GET /api/documents (post-upload verification) ---"
+echo "--- 5. Testing GET /api/v1/documents (post-upload verification) ---"
 curl -s -X GET "${BASE_URL}/documents" \
   -H "Accept: application/json"
 echo ""

@@ -1,6 +1,6 @@
 package com.paperless.rest.exception;
 
-public class InvalidStatusTransitionException extends RuntimeException {
+public class InvalidStatusTransitionException extends BusinessLayerException {
     public InvalidStatusTransitionException(String message) {
         super(message);
     }

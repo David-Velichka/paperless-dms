@@ -4,6 +4,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.paperless.rest.dto.DocumentStatusChangeRequestDto;
 import com.paperless.rest.dto.DocumentStatusHistoryDto;
 import com.paperless.rest.exception.BusinessLayerException;
+import com.paperless.rest.exception.DocumentNotFoundException;
+import com.paperless.rest.exception.InvalidStatusTransitionException;
 import com.paperless.rest.mapper.DocumentStatusHistoryMapper;
 import com.paperless.rest.service.DocumentStatusHistoryService;
 import com.paperless.rest.service.model.DocumentStatus;

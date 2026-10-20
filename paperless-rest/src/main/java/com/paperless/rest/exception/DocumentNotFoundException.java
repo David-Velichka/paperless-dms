@@ -1,6 +1,6 @@
 package com.paperless.rest.exception;
 
-public class DocumentNotFoundException extends RuntimeException {
+public class DocumentNotFoundException extends BusinessLayerException {
     public DocumentNotFoundException(String message) {
         super(message);
     }

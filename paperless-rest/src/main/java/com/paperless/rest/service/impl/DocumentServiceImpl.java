@@ -2,6 +2,7 @@ package com.paperless.rest.service.impl;
 
 import com.paperless.rest.dal.persistence.DocumentPersistenceService;
 import com.paperless.rest.exception.BusinessLayerException;
+import com.paperless.rest.exception.DocumentNotFoundException;
 import com.paperless.rest.service.DocumentService;
 import com.paperless.rest.service.DocumentStatusHistoryService;
 import com.paperless.rest.service.model.DocumentModel;
@@ -48,7 +49,7 @@ public class DocumentServiceImpl implements DocumentService {
         }
         log.debug("Finding document by id: {}", id);
         return documentPersistenceService.findById(id)
-                .orElseThrow(() -> new BusinessLayerException("Document with id " + id + " not found"));
+                .orElseThrow(() -> new DocumentNotFoundException("Document with id " + id + " not found"));
     }
 
     @Override

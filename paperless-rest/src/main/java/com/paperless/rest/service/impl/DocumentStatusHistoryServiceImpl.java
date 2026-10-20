@@ -3,6 +3,7 @@ package com.paperless.rest.service.impl;
 import com.paperless.rest.dal.persistence.DocumentPersistenceService;
 import com.paperless.rest.dal.persistence.DocumentStatusHistoryPersistenceService;
 import com.paperless.rest.exception.BusinessLayerException;
+import com.paperless.rest.exception.DocumentNotFoundException;
 import com.paperless.rest.service.DocumentStatusHistoryService;
 import com.paperless.rest.service.model.DocumentModel;
 import com.paperless.rest.service.model.DocumentStatus;
@@ -34,7 +35,7 @@ public class DocumentStatusHistoryServiceImpl implements DocumentStatusHistorySe
         }
 
         DocumentModel documentModel = documentPersistenceService.findById(documentId)
-                .orElseThrow(() -> new BusinessLayerException("Document with id " + documentId + " not found"));
+                .orElseThrow(() -> new DocumentNotFoundException("Document with id " + documentId + " not found"));
 
         DocumentStatus previousStatus = documentModel.getCurrentStatus() != null ? documentModel.getCurrentStatus() : DocumentStatus.RECEIVED;
 
@@ -63,7 +64,7 @@ public class DocumentStatusHistoryServiceImpl implements DocumentStatusHistorySe
             throw new BusinessLayerException("Document id must not be null");
         }
         if (!documentPersistenceService.existsById(documentId)) {
-            throw new BusinessLayerException("Document with id " + documentId + " not found");
+            throw new DocumentNotFoundException("Document with id " + documentId + " not found");
         }
         log.debug("Fetching status history for document id: {}", documentId);
         return documentStatusHistoryPersistenceService.findByDocumentIdOrderByTimestampDesc(documentId);
@@ -95,7 +96,7 @@ public class DocumentStatusHistoryServiceImpl implements DocumentStatusHistorySe
             throw new BusinessLayerException("History id must not be null");
         }
         return documentStatusHistoryPersistenceService.findById(id)
-                .orElseThrow(() -> new BusinessLayerException("DocumentStatusHistory with id " + id + " not found"));
+                .orElseThrow(() -> new DocumentNotFoundException("DocumentStatusHistory with id " + id + " not found"));
     }
 
     @Override

@@ -66,7 +66,7 @@
 ## 4. Business Workflow Outline
 
 1. **Step 1: Document Ingestion (Upload)**
-   - Client sends PDF via `POST /api/documents/upload`.
+   - Client sends PDF via `POST /api/v1/documents/upload`.
    - Business service saves document with `currentStatus = RECEIVED`.
    - Business service logs initial history record: `(status: RECEIVED, comment: "Initial upload")`.
 
@@ -90,10 +90,10 @@
 
 ## 5. REST Endpoints Summary
 
-- `POST /api/documents/upload`: Ingest new document, auto-assign `RECEIVED` status.
-- `GET /api/documents`: List documents (includes `currentStatus`).
-- `GET /api/documents/{id}`: Document details (includes `currentStatus`).
-- `POST /api/documents/{id}/status`: Transition document to new status (validates lifecycle graph).
-- `GET /api/documents/{id}/history`: Fetch full audit history for document (chronological descending).
-- `GET /api/documents/status-history/{id}`: Fetch single status history record by its ID.
-- `DELETE /api/documents/{id}`: Delete document and cascade delete all its history records.
+- `POST /api/v1/documents/upload`: Ingest new document, auto-assign `RECEIVED` status.
+- `GET /api/v1/documents`: List documents (includes `currentStatus`).
+- `GET /api/v1/documents/{id}`: Document details (includes `currentStatus`).
+- `POST /api/v1/documents/{id}/status`: Transition document to new status (validates lifecycle graph).
+- `GET /api/v1/documents/{id}/history`: Fetch full audit history for document (chronological descending).
+- `GET /api/v1/documents/status-history/{id}`: Fetch single status history record by its ID.
+- `DELETE /api/v1/documents/{id}`: Delete document and cascade delete all its history records.

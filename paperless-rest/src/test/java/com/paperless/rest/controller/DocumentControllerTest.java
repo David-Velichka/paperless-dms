@@ -3,6 +3,7 @@ package com.paperless.rest.controller;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.paperless.rest.dto.DocumentDto;
 import com.paperless.rest.exception.BusinessLayerException;
+import com.paperless.rest.exception.DocumentNotFoundException;
 import com.paperless.rest.mapper.DocumentDtoMapper;
 import com.paperless.rest.service.DocumentService;
 import com.paperless.rest.service.model.DocumentModel;

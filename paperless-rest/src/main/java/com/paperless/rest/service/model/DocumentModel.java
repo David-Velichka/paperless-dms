@@ -1,6 +1,7 @@
 package com.paperless.rest.service.model;
 
 import com.paperless.rest.exception.BusinessLayerException;
+import com.paperless.rest.exception.InvalidStatusTransitionException;
 import com.paperless.rest.service.validation.annotation.ValidFilename;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.PositiveOrZero;
@@ -67,7 +68,7 @@ public class DocumentModel {
             this.currentStatus = DocumentStatus.RECEIVED;
         }
         if (!this.currentStatus.canTransitionTo(targetStatus)) {
-            throw new BusinessLayerException(
+            throw new InvalidStatusTransitionException(
                     "Illegal status transition from " + this.currentStatus + " to " + targetStatus);
         }
         this.currentStatus = targetStatus;
