@@ -6,6 +6,7 @@ import org.springframework.amqp.core.DirectExchange;
 import org.springframework.amqp.core.Queue;
 import org.springframework.amqp.support.converter.JacksonJsonMessageConverter;
 import org.springframework.amqp.support.converter.MessageConverter;
+import org.springframework.boot.amqp.autoconfigure.RabbitTemplateCustomizer;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -34,5 +35,11 @@ public class RabbitMqConfig {
     @Bean
     public MessageConverter messageConverter() {
         return new JacksonJsonMessageConverter();
+    }
+
+    // Transacted channel joins the database transaction: the message is only delivered after the DB commit
+    @Bean
+    public RabbitTemplateCustomizer transactedRabbitTemplate() {
+        return rabbitTemplate -> rabbitTemplate.setChannelTransacted(true);
     }
 }

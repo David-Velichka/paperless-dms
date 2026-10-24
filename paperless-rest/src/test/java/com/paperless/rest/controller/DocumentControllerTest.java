@@ -1,9 +1,12 @@
 package com.paperless.rest.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.paperless.rest.dto.DocumentDto;
+import com.paperless.rest.dto.DocumentCreateDto;
+import com.paperless.rest.dto.DocumentResponseDto;
+import com.paperless.rest.dto.DocumentUpdateDto;
 import com.paperless.rest.exception.BusinessLayerException;
 import com.paperless.rest.exception.DocumentNotFoundException;
+import com.paperless.rest.exception.MessageQueueException;
 import com.paperless.rest.mapper.DocumentDtoMapper;
 import com.paperless.rest.service.DocumentService;
 import com.paperless.rest.service.model.DocumentModel;
@@ -18,6 +21,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import java.util.List;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
@@ -44,10 +48,10 @@ class DocumentControllerTest {
     @Test
     void getAllDocuments_ReturnsOkAndJsonArray() throws Exception {
         DocumentModel model = DocumentModel.builder().id(1L).title("Sample").build();
-        DocumentDto dto = DocumentDto.builder().id(1L).title("Sample").build();
+        DocumentResponseDto dto = DocumentResponseDto.builder().id(1L).title("Sample").build();
 
         when(documentService.findAll()).thenReturn(List.of(model));
-        when(documentDtoMapper.toDtoList(List.of(model))).thenReturn(List.of(dto));
+        when(documentDtoMapper.toResponseDtoList(List.of(model))).thenReturn(List.of(dto));
 
         mockMvc.perform(get("/api/v1/documents"))
                 .andExpect(status().isOk())
@@ -75,12 +79,12 @@ class DocumentControllerTest {
     // WHEN GET /api/v1/documents/{id} aufgerufen wird
     // THEN wird der HTTP-Status 200 OK und das Dokument-DTO zurückgegeben
     @Test
-    void getDocumentById_WithValidId_ReturnsDocumentDto() throws Exception {
+    void getDocumentById_WithValidId_ReturnsDocumentResponseDto() throws Exception {
         DocumentModel model = DocumentModel.builder().id(10L).title("Document 10").build();
-        DocumentDto dto = DocumentDto.builder().id(10L).title("Document 10").build();
+        DocumentResponseDto dto = DocumentResponseDto.builder().id(10L).title("Document 10").build();
 
         when(documentService.findById(10L)).thenReturn(model);
-        when(documentDtoMapper.toDto(model)).thenReturn(dto);
+        when(documentDtoMapper.toResponseDto(model)).thenReturn(dto);
 
         mockMvc.perform(get("/api/v1/documents/10"))
                 .andExpect(status().isOk())
@@ -111,10 +115,10 @@ class DocumentControllerTest {
     @Test
     void searchDocuments_WithValidQuery_ReturnsMatchingDocuments() throws Exception {
         DocumentModel model = DocumentModel.builder().id(1L).title("Financial Report").build();
-        DocumentDto dto = DocumentDto.builder().id(1L).title("Financial Report").build();
+        DocumentResponseDto dto = DocumentResponseDto.builder().id(1L).title("Financial Report").build();
 
         when(documentService.search("Report")).thenReturn(List.of(model));
-        when(documentDtoMapper.toDtoList(List.of(model))).thenReturn(List.of(dto));
+        when(documentDtoMapper.toResponseDtoList(List.of(model))).thenReturn(List.of(dto));
 
         mockMvc.perform(get("/api/v1/documents/search").param("query", "Report"))
                 .andExpect(status().isOk())
@@ -151,19 +155,19 @@ class DocumentControllerTest {
 
     // --- Action 4: createDocument ---
 
-    // GIVEN ein gültiges DocumentDto im Request-Body
+    // GIVEN ein gültiges DocumentCreateDto im Request-Body
     // WHEN POST /api/v1/documents aufgerufen wird
     // THEN wird der HTTP-Status 201 Created und das erstellte DTO zurückgegeben
     @Test
     void createDocument_WithValidDto_ReturnsCreated() throws Exception {
-        DocumentDto requestDto = DocumentDto.builder().title("New Invoice").build();
+        DocumentCreateDto requestDto = DocumentCreateDto.builder().title("New Invoice").build();
         DocumentModel model = DocumentModel.builder().title("New Invoice").build();
         DocumentModel savedModel = DocumentModel.builder().id(5L).title("New Invoice").build();
-        DocumentDto savedDto = DocumentDto.builder().id(5L).title("New Invoice").build();
+        DocumentResponseDto savedDto = DocumentResponseDto.builder().id(5L).title("New Invoice").build();
 
-        when(documentDtoMapper.toModel(any(DocumentDto.class))).thenReturn(model);
+        when(documentDtoMapper.toModel(any(DocumentCreateDto.class))).thenReturn(model);
         when(documentService.save(model)).thenReturn(savedModel);
-        when(documentDtoMapper.toDto(savedModel)).thenReturn(savedDto);
+        when(documentDtoMapper.toResponseDto(savedModel)).thenReturn(savedDto);
 
         mockMvc.perform(post("/api/v1/documents")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -173,12 +177,12 @@ class DocumentControllerTest {
                 .andExpect(jsonPath("$.title").value("New Invoice"));
     }
 
-    // GIVEN ein DocumentDto mit leerem Titel
+    // GIVEN ein DocumentCreateDto mit leerem Titel
     // WHEN POST /api/v1/documents aufgerufen wird
     // THEN wird der HTTP-Status 400 Bad Request wegen Validierungsfehlern zurückgegeben
     @Test
     void createDocument_WithBlankTitle_ReturnsBadRequest() throws Exception {
-        DocumentDto invalidDto = DocumentDto.builder().title("   ").build();
+        DocumentCreateDto invalidDto = DocumentCreateDto.builder().title("   ").build();
 
         mockMvc.perform(post("/api/v1/documents")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -194,7 +198,7 @@ class DocumentControllerTest {
 
     // GIVEN eine gültige PDF-Datei und ein optionaler Titel
     // WHEN POST /api/v1/documents/upload mit Multipart-Formulardaten aufgerufen wird
-    // THEN wird der HTTP-Status 201 Created und das erstellte DocumentDto zurückgegeben
+    // THEN wird der HTTP-Status 201 Created und das erstellte DocumentResponseDto zurückgegeben
     @Test
     void uploadDocument_WithValidFile_ReturnsCreated() throws Exception {
         MockMultipartFile file = new MockMultipartFile(
@@ -208,7 +212,7 @@ class DocumentControllerTest {
                 .fileSize(17L)
                 .build();
 
-        DocumentDto savedDto = DocumentDto.builder()
+        DocumentResponseDto savedDto = DocumentResponseDto.builder()
                 .id(42L)
                 .title("Custom Title")
                 .originalFilename("sample.pdf")
@@ -218,7 +222,7 @@ class DocumentControllerTest {
 
         when(documentService.uploadDocument(any(DocumentModel.class), any(byte[].class)))
                 .thenReturn(savedModel);
-        when(documentDtoMapper.toDto(savedModel)).thenReturn(savedDto);
+        when(documentDtoMapper.toResponseDto(savedModel)).thenReturn(savedDto);
 
         mockMvc.perform(multipart("/api/v1/documents/upload")
                         .file(file)
@@ -239,10 +243,88 @@ class DocumentControllerTest {
 
         mockMvc.perform(multipart("/api/v1/documents/upload")
                         .file(emptyFile))
-                .andExpect(status().isBadRequest());
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.type").value("urn:paperless:problem:invalid-document"))
+                .andExpect(jsonPath("$.detail").value("Uploaded file must not be empty"));
+        verify(documentService, never()).uploadDocument(any(), any());
     }
 
-    // --- Action 6: deleteDocument ---
+    // GIVEN eine gültige PDF-Datei, aber RabbitMQ ist nicht erreichbar
+    // WHEN POST /api/v1/documents/upload aufgerufen wird
+    // THEN wird der HTTP-Status 503 Service Unavailable als ProblemDetail zurückgegeben
+    @Test
+    void uploadDocument_WhenQueueUnavailable_ReturnsServiceUnavailable() throws Exception {
+        MockMultipartFile file = new MockMultipartFile(
+                "file", "sample.pdf", "application/pdf", "Dummy PDF content".getBytes());
+
+        when(documentService.uploadDocument(any(DocumentModel.class), any(byte[].class)))
+                .thenThrow(new MessageQueueException("Document 1 could not be queued for OCR"));
+
+        mockMvc.perform(multipart("/api/v1/documents/upload").file(file))
+                .andExpect(status().isServiceUnavailable())
+                .andExpect(jsonPath("$.title").value("Message Queue Unavailable"))
+                .andExpect(jsonPath("$.status").value(503))
+                .andExpect(jsonPath("$.type").value("urn:paperless:problem:message-queue-unavailable"));
+    }
+
+    // --- Action 6: updateDocument ---
+
+    // GIVEN ein existierendes Dokument und ein gültiges DocumentUpdateDto
+    // WHEN PUT /api/v1/documents/{id} aufgerufen wird
+    // THEN wird der HTTP-Status 200 OK und das aktualisierte Dokument zurückgegeben
+    @Test
+    void updateDocument_WithValidDto_ReturnsOk() throws Exception {
+        DocumentUpdateDto requestDto = DocumentUpdateDto.builder().title("Renamed Invoice").build();
+        DocumentModel changes = DocumentModel.builder().title("Renamed Invoice").build();
+        DocumentModel updatedModel = DocumentModel.builder().id(7L).title("Renamed Invoice").build();
+        DocumentResponseDto updatedDto = DocumentResponseDto.builder().id(7L).title("Renamed Invoice").build();
+
+        when(documentDtoMapper.toModel(any(DocumentUpdateDto.class))).thenReturn(changes);
+        when(documentService.update(7L, changes)).thenReturn(updatedModel);
+        when(documentDtoMapper.toResponseDto(updatedModel)).thenReturn(updatedDto);
+
+        mockMvc.perform(put("/api/v1/documents/7")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(requestDto)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(7L))
+                .andExpect(jsonPath("$.title").value("Renamed Invoice"));
+    }
+
+    // GIVEN ein DocumentUpdateDto mit leerem Titel
+    // WHEN PUT /api/v1/documents/{id} aufgerufen wird
+    // THEN wird der HTTP-Status 400 Bad Request wegen Validierungsfehlern zurückgegeben
+    @Test
+    void updateDocument_WithBlankTitle_ReturnsBadRequest() throws Exception {
+        DocumentUpdateDto invalidDto = DocumentUpdateDto.builder().title(" ").build();
+
+        mockMvc.perform(put("/api/v1/documents/7")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(invalidDto)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.type").value("urn:paperless:problem:validation-error"))
+                .andExpect(jsonPath("$.invalidParams.title").exists());
+        verify(documentService, never()).update(any(), any());
+    }
+
+    // GIVEN eine nicht existierende Dokument-ID
+    // WHEN PUT /api/v1/documents/{id} aufgerufen wird
+    // THEN wird der HTTP-Status 404 Not Found zurückgegeben
+    @Test
+    void updateDocument_WithNonExistingId_ReturnsNotFound() throws Exception {
+        DocumentUpdateDto requestDto = DocumentUpdateDto.builder().title("Renamed").build();
+        when(documentDtoMapper.toModel(any(DocumentUpdateDto.class))).thenReturn(DocumentModel.builder().title("Renamed").build());
+        when(documentService.update(eq(99L), any(DocumentModel.class)))
+                .thenThrow(new DocumentNotFoundException("Document with id 99 not found"));
+
+        mockMvc.perform(put("/api/v1/documents/99")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(requestDto)))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.type").value("urn:paperless:problem:document-not-found"));
+    }
+
+    // --- Action 7: deleteDocument ---
 
     // GIVEN eine gültige Dokument-ID für ein existierendes Dokument
     // WHEN DELETE /api/v1/documents/{id} aufgerufen wird
@@ -275,10 +357,10 @@ class DocumentControllerTest {
     // THEN wird der HTTP-Status 409 Conflict und eine aussagekräftige Fehlermeldung zurückgegeben
     @Test
     void createDocument_WhenConcurrentConflictOccurs_ReturnsConflict() throws Exception {
-        DocumentDto requestDto = DocumentDto.builder().title("Concurrent Invoice").build();
+        DocumentCreateDto requestDto = DocumentCreateDto.builder().title("Concurrent Invoice").build();
         DocumentModel model = DocumentModel.builder().title("Concurrent Invoice").build();
 
-        when(documentDtoMapper.toModel(any(DocumentDto.class))).thenReturn(model);
+        when(documentDtoMapper.toModel(any(DocumentCreateDto.class))).thenReturn(model);
         when(documentService.save(any(DocumentModel.class)))
                 .thenThrow(new org.springframework.orm.ObjectOptimisticLockingFailureException(DocumentModel.class, 1L));
 

@@ -79,6 +79,19 @@ public class GlobalExceptionHandler {
         return problem;
     }
 
+    @ExceptionHandler(MessageQueueException.class)
+    public ProblemDetail handleMessageQueueException(MessageQueueException ex) {
+        log.error("Message queue unavailable: {}", ex.getMessage());
+        String message = "The document could not be queued for processing. Please try again later.";
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.SERVICE_UNAVAILABLE, message);
+        problem.setTitle("Message Queue Unavailable");
+        problem.setType(URI.create("urn:paperless:problem:message-queue-unavailable"));
+        problem.setProperty("timestamp", OffsetDateTime.now());
+        problem.setProperty("error", problem.getTitle());
+        problem.setProperty("message", message);
+        return problem;
+    }
+
     @ExceptionHandler({OptimisticLockException.class, ObjectOptimisticLockingFailureException.class})
     public ProblemDetail handleOptimisticLock(Exception ex) {
         log.warn("Concurrent update conflict detected: {}", ex.getMessage());

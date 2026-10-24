@@ -105,6 +105,21 @@ class GlobalExceptionHandlerTest {
         assertEquals(URI.create("urn:paperless:problem:business-layer-error"), problem.getType());
     }
 
+    // GIVEN eine MessageQueueException, weil RabbitMQ nicht erreichbar ist
+    // WHEN die handleMessageQueueException-Methode aufgerufen wird
+    // THEN wird ein RFC 7807 ProblemDetail mit HTTP-Status 503 ohne interne Details zurückgegeben
+    @Test
+    void handleMessageQueueException_ReturnsProblemDetail503() {
+        MessageQueueException ex = new MessageQueueException("Document 5 could not be queued for OCR");
+
+        ProblemDetail problem = handler.handleMessageQueueException(ex);
+
+        assertEquals(HttpStatus.SERVICE_UNAVAILABLE.value(), problem.getStatus());
+        assertEquals("Message Queue Unavailable", problem.getTitle());
+        assertEquals("The document could not be queued for processing. Please try again later.", problem.getDetail());
+        assertEquals(URI.create("urn:paperless:problem:message-queue-unavailable"), problem.getType());
+    }
+
     // GIVEN eine OptimisticLockException bei nebenläufiger Bearbeitung
     // WHEN die handleOptimisticLock-Methode aufgerufen wird
     // THEN wird ein RFC 7807 ProblemDetail mit HTTP-Status 409 zurückgegeben

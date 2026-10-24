@@ -1,0 +1,13 @@
+spring:
+  application:
+    name: paperless-ocr-worker
+
+  rabbitmq:
+    host: ${SPRING_RABBITMQ_HOST:localhost}
+    port: ${SPRING_RABBITMQ_PORT:5672}
+    username: ${SPRING_RABBITMQ_USERNAME:paperless}
+    password: ${SPRING_RABBITMQ_PASSWORD:paperless_secret}
+
+logging:
+  level:
+    com.paperless.ocr: DEBUG

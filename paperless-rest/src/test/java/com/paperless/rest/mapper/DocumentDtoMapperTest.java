@@ -1,7 +1,6 @@
 package com.paperless.rest.mapper;
 
 import com.paperless.rest.dto.DocumentCreateDto;
-import com.paperless.rest.dto.DocumentDto;
 import com.paperless.rest.dto.DocumentResponseDto;
 import com.paperless.rest.dto.DocumentUpdateDto;
 import com.paperless.rest.service.model.DocumentModel;
@@ -88,58 +87,15 @@ class DocumentDtoMapperTest {
         assertEquals("Updated Title", model.getTitle());
     }
 
-    // GIVEN ein DocumentModel
-    // WHEN toDto aufgerufen wird
-    // THEN wird ein identisches DocumentDto erzeugt
-    @Test
-    void toDto_MapsAllFields() {
-        DocumentModel model = DocumentModel.builder()
-                .id(1L)
-                .title("Invoice")
-                .originalFilename("invoice.pdf")
-                .contentType("application/pdf")
-                .fileSize(1024L)
-                .currentStatus(DocumentStatus.RECEIVED)
-                .build();
-
-        DocumentDto dto = mapper.toDto(model);
-
-        assertNotNull(dto);
-        assertEquals(1L, dto.getId());
-        assertEquals("Invoice", dto.getTitle());
-        assertEquals(DocumentStatus.RECEIVED, dto.getCurrentStatus());
-    }
-
-    // GIVEN ein DocumentDto
-    // WHEN toModel aufgerufen wird
-    // THEN wird ein identisches DocumentModel erzeugt
-    @Test
-    void toModel_MapsAllFields() {
-        DocumentDto dto = DocumentDto.builder()
-                .id(2L)
-                .title("Contract")
-                .currentStatus(DocumentStatus.PROCESSING)
-                .build();
-
-        DocumentModel model = mapper.toModel(dto);
-
-        assertNotNull(model);
-        assertEquals(2L, model.getId());
-        assertEquals(DocumentStatus.PROCESSING, model.getCurrentStatus());
-    }
-
     // GIVEN Listen von DocumentModel Instanzen
-    // WHEN Listen-Mapping-Methoden aufgerufen werden
-    // THEN werden entsprechende Listen zurückgegeben
+    // WHEN toResponseDtoList aufgerufen wird
+    // THEN wird eine entsprechende Liste zurückgegeben
     @Test
     void listMappings_WorkCorrectly() {
         DocumentModel model = DocumentModel.builder().id(5L).title("List Doc").build();
 
-        List<DocumentDto> dtoList = mapper.toDtoList(List.of(model));
         List<DocumentResponseDto> responseList = mapper.toResponseDtoList(List.of(model));
 
-        assertEquals(1, dtoList.size());
-        assertEquals(5L, dtoList.get(0).getId());
         assertEquals(1, responseList.size());
         assertEquals(5L, responseList.get(0).getId());
     }

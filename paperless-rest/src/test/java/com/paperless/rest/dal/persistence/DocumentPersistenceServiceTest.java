@@ -51,7 +51,7 @@ class DocumentPersistenceServiceTest {
     @Test
     void save_MapsAndPersistsModel() {
         when(documentEntityMapper.toEntity(sampleModel)).thenReturn(sampleEntity);
-        when(documentRepository.save(sampleEntity)).thenReturn(sampleEntity);
+        when(documentRepository.saveAndFlush(sampleEntity)).thenReturn(sampleEntity);
         when(documentEntityMapper.toModel(sampleEntity)).thenReturn(sampleModel);
 
         DocumentModel result = persistenceService.save(sampleModel);
@@ -60,7 +60,7 @@ class DocumentPersistenceServiceTest {
         assertEquals(1L, result.getId());
         assertEquals("Persistence Test Doc", result.getTitle());
         verify(documentEntityMapper, times(1)).toEntity(sampleModel);
-        verify(documentRepository, times(1)).save(sampleEntity);
+        verify(documentRepository, times(1)).saveAndFlush(sampleEntity);
         verify(documentEntityMapper, times(1)).toModel(sampleEntity);
     }
 

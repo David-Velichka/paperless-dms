@@ -2,6 +2,9 @@ package com.paperless.rest.service;
 
 import com.paperless.rest.dal.persistence.DocumentPersistenceService;
 import com.paperless.rest.exception.BusinessLayerException;
+import com.paperless.rest.exception.DocumentNotFoundException;
+import com.paperless.rest.exception.MessageQueueException;
+import com.paperless.rest.messaging.OcrMessageProducer;
 import com.paperless.rest.service.impl.DocumentServiceImpl;
 import com.paperless.rest.service.model.DocumentModel;
 import com.paperless.rest.service.model.DocumentStatus;
@@ -30,6 +33,9 @@ class DocumentServiceTest {
 
     @Mock
     private DocumentModelValidator documentModelValidator;
+
+    @Mock
+    private OcrMessageProducer ocrMessageProducer;
 
     @InjectMocks
     private DocumentServiceImpl documentService;
@@ -259,6 +265,23 @@ class DocumentServiceTest {
         verify(documentPersistenceService, times(1)).save(any(DocumentModel.class));
         verify(documentStatusHistoryService, times(1))
                 .createInitialHistory(10L, "Document file uploaded");
+        verify(ocrMessageProducer, times(1)).sendOcrMessage(expectedModel);
+    }
+
+    // GIVEN ein gültiges Dokument, aber RabbitMQ ist nicht erreichbar
+    // WHEN uploadDocument aufgerufen wird
+    // THEN wird die MessageQueueException weitergegeben, damit die Transaktion zurückgerollt wird
+    @Test
+    void uploadDocument_WhenQueueUnavailable_ThrowsMessageQueueException() {
+        DocumentModel inputModel = DocumentModel.builder().title("Upload Test").originalFilename("test.pdf").build();
+        DocumentModel savedModel = inputModel.toBuilder().id(11L).currentStatus(DocumentStatus.RECEIVED).build();
+
+        when(documentPersistenceService.save(any(DocumentModel.class))).thenReturn(savedModel);
+        doThrow(new MessageQueueException("Document 11 could not be queued for OCR"))
+                .when(ocrMessageProducer).sendOcrMessage(savedModel);
+
+        assertThrows(MessageQueueException.class,
+                () -> documentService.uploadDocument(inputModel, "content".getBytes()));
     }
 
     // GIVEN ein Null-DocumentModel beim Upload
@@ -268,6 +291,7 @@ class DocumentServiceTest {
     void uploadDocument_WithNullModel_ThrowsBusinessLayerException() {
         assertThrows(BusinessLayerException.class, () -> documentService.uploadDocument(null, "content".getBytes()));
         verify(documentPersistenceService, never()).save(any());
+        verify(ocrMessageProducer, never()).sendOcrMessage(any());
     }
 
     // GIVEN ein DocumentModel mit leerem Dateiinhalt
@@ -291,6 +315,44 @@ class DocumentServiceTest {
                 .when(documentModelValidator).validateOrThrow(model);
 
         assertThrows(BusinessLayerException.class, () -> documentService.uploadDocument(model, "content".getBytes()));
+        verify(documentPersistenceService, never()).save(any());
+    }
+
+    // GIVEN ein existierendes Dokument und ein neuer Titel
+    // WHEN update aufgerufen wird
+    // THEN wird nur der Titel geändert und das Dokument gespeichert
+    @Test
+    void update_WhenExists_ChangesTitleAndSaves() {
+        DocumentModel changes = DocumentModel.builder().title("Renamed Invoice").build();
+        when(documentPersistenceService.findById(1L)).thenReturn(Optional.of(sampleModel));
+        when(documentPersistenceService.save(any(DocumentModel.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        DocumentModel result = documentService.update(1L, changes);
+
+        assertEquals(1L, result.getId());
+        assertEquals("Renamed Invoice", result.getTitle());
+        assertEquals(DocumentStatus.RECEIVED, result.getCurrentStatus());
+        verify(documentStatusHistoryService, never()).createInitialHistory(any(), any());
+    }
+
+    // GIVEN eine nicht existierende Dokument-ID
+    // WHEN update aufgerufen wird
+    // THEN wird eine DocumentNotFoundException geworfen
+    @Test
+    void update_WhenNotFound_ThrowsDocumentNotFoundException() {
+        DocumentModel changes = DocumentModel.builder().title("Renamed").build();
+        when(documentPersistenceService.findById(99L)).thenReturn(Optional.empty());
+
+        assertThrows(DocumentNotFoundException.class, () -> documentService.update(99L, changes));
+        verify(documentPersistenceService, never()).save(any());
+    }
+
+    // GIVEN keine Änderungen (null)
+    // WHEN update aufgerufen wird
+    // THEN wird eine BusinessLayerException geworfen
+    @Test
+    void update_WithNullChanges_ThrowsBusinessLayerException() {
+        assertThrows(BusinessLayerException.class, () -> documentService.update(1L, null));
         verify(documentPersistenceService, never()).save(any());
     }
 }

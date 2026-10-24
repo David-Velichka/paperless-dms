@@ -10,6 +10,7 @@ import java.util.List;
  */
 public interface DocumentService {
     DocumentModel save(DocumentModel documentModel);
+    DocumentModel update(Long id, DocumentModel changes);
     DocumentModel findById(Long id);
     List<DocumentModel> findAll();
     List<DocumentModel> search(String query);
