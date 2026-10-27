@@ -1,11 +1,12 @@
 plugins {
 	java
+	jacoco
 	id("org.springframework.boot") version "4.1.1"
 	id("io.spring.dependency-management") version "1.1.7"
 }
 
 group = "com.paperless"
-version = "0.0.1-SNAPSHOT"
+version = "0.3.0"
 
 java {
 	toolchain {
@@ -62,4 +63,24 @@ tasks.withType<JavaCompile> {
 
 tasks.withType<Test> {
 	useJUnitPlatform()
+}
+
+// Coverage report (build/reports/jacoco) and >70% line coverage check required by the course
+tasks.test {
+	finalizedBy(tasks.jacocoTestReport)
+}
+
+tasks.jacocoTestCoverageVerification {
+	violationRules {
+		rule {
+			limit {
+				counter = "LINE"
+				minimum = "0.70".toBigDecimal()
+			}
+		}
+	}
+}
+
+tasks.check {
+	dependsOn(tasks.jacocoTestCoverageVerification)
 }
