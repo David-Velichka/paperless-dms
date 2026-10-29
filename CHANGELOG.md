@@ -28,6 +28,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - Invalid YAML in `openapi.yaml` (unquoted example value).
 - Responses after saving an existing document now contain the new `version` and `modifiedAt` (`saveAndFlush` in `DocumentPersistenceService`).
+- Upload no longer hangs up to 60s when RabbitMQ is down: `spring.rabbitmq.connection-timeout: 5s`, then 503.
 
 ## [0.2.2] - 2026-10-20
 ### Added

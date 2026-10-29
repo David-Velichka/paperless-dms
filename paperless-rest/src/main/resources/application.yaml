@@ -25,6 +25,8 @@ spring:
     port: ${SPRING_RABBITMQ_PORT:5672}
     username: ${SPRING_RABBITMQ_USERNAME:paperless}
     password: ${SPRING_RABBITMQ_PASSWORD:paperless_secret}
+    # Fail fast when the broker is down (default is 60s), the upload then returns 503
+    connection-timeout: 5s
 
   flyway:
     enabled: false
