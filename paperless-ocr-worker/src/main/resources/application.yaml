@@ -1,0 +1,21 @@
+spring:
+  application:
+    name: paperless-ocr-worker
+
+  rabbitmq:
+    host: ${SPRING_RABBITMQ_HOST:localhost}
+    port: ${SPRING_RABBITMQ_PORT:5672}
+    username: ${SPRING_RABBITMQ_USERNAME:paperless}
+    password: ${SPRING_RABBITMQ_PASSWORD:paperless_secret}
+    # On an unexpected error retry 3 times (1s, 2s, 4s), then reject without requeue (no endless loop)
+    listener:
+      simple:
+        retry:
+          enabled: true
+          max-retries: 3
+          initial-interval: 1s
+          multiplier: 2
+
+logging:
+  level:
+    com.paperless.ocr: DEBUG

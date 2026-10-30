@@ -3,6 +3,7 @@ package com.paperless.rest.service.impl;
 import com.paperless.rest.dal.persistence.DocumentPersistenceService;
 import com.paperless.rest.exception.BusinessLayerException;
 import com.paperless.rest.exception.DocumentNotFoundException;
+import com.paperless.rest.messaging.OcrMessageProducer;
 import com.paperless.rest.service.DocumentService;
 import com.paperless.rest.service.DocumentStatusHistoryService;
 import com.paperless.rest.service.model.DocumentModel;
@@ -11,6 +12,7 @@ import com.paperless.rest.service.validation.DocumentModelValidator;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
@@ -22,6 +24,7 @@ public class DocumentServiceImpl implements DocumentService {
     private final DocumentPersistenceService documentPersistenceService;
     private final DocumentStatusHistoryService documentStatusHistoryService;
     private final DocumentModelValidator documentModelValidator;
+    private final OcrMessageProducer ocrMessageProducer;
 
     @Override
     public DocumentModel save(DocumentModel documentModel) {
@@ -40,6 +43,17 @@ public class DocumentServiceImpl implements DocumentService {
             documentStatusHistoryService.createInitialHistory(saved.getId(), "Document metadata created");
         }
         return saved;
+    }
+
+    @Override
+    public DocumentModel update(Long id, DocumentModel changes) {
+        if (changes == null) {
+            throw new BusinessLayerException("Document changes must not be null");
+        }
+        DocumentModel existing = findById(id);
+        log.info("Updating metadata of document {}", id);
+        DocumentModel updated = existing.toBuilder().title(changes.getTitle()).build();
+        return save(updated);
     }
 
     @Override
@@ -82,7 +96,9 @@ public class DocumentServiceImpl implements DocumentService {
         documentPersistenceService.deleteById(id);
     }
 
+    // One transaction for metadata, history and OCR message: if the queue is not reachable, nothing is saved
     @Override
+    @Transactional
     public DocumentModel uploadDocument(DocumentModel documentModel, byte[] content) {
         if (documentModel == null) {
             throw new BusinessLayerException("Document model must not be null");
@@ -100,6 +116,8 @@ public class DocumentServiceImpl implements DocumentService {
         DocumentModel saved = documentPersistenceService.save(documentModel);
 
         documentStatusHistoryService.createInitialHistory(saved.getId(), "Document file uploaded");
+
+        ocrMessageProducer.sendOcrMessage(saved);
 
         return saved;
     }

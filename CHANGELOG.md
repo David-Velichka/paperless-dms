@@ -4,6 +4,33 @@ All notable changes to the Paperless Document Management System will be document
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.0] - 2026-10-30
+### Added
+- RabbitMQ 4 broker container (`paperless-rabbitmq`) with management UI and health check in `docker-compose.yml`.
+- `OcrMessageProducer` publishes an `OcrMessage` to `paperless.ocr.queue` on every document upload (transacted channel, delivered after the database commit).
+- New `paperless-ocr-worker` Spring Boot application consuming the OCR queue and logging received jobs (OCR processing itself follows in Sprint 4).
+- Worker listener retry: 3 retries with backoff (1s, 2s, 4s), then reject without requeue. Invalid messages (no document id) are not retried.
+- `MessageQueueException` mapped to HTTP 503 Service Unavailable when the broker is not reachable.
+- `PUT /api/v1/documents/{id}` to update document metadata (title).
+- GitHub Actions CI workflow (backend tests, worker tests, web UI build, `docker compose build`).
+- JaCoCo coverage report with 70% line coverage gate, domain model unit tests.
+- `docs/architecture.md` with component and sequence diagrams, design decisions, testing strategy and lessons learned.
+- `tests/sprint3-queue-check.ps1` and `.sh` for the Sprint 3 queue check.
+
+### Changed
+- Document upload is one transaction: if the OCR message cannot be sent, metadata and history are rolled back.
+- `DocumentController` uses the CRUD specific DTOs (`DocumentCreateDto`, `DocumentUpdateDto`, `DocumentResponseDto`).
+- Empty upload now throws `InvalidDocumentException` and returns a 400 ProblemDetail instead of an empty body.
+- Gradle foojay toolchain resolver updated to 1.0.0 (required for Gradle 9).
+
+### Removed
+- Legacy composite `DocumentDto` and its mapper methods.
+
+### Fixed
+- Invalid YAML in `openapi.yaml` (unquoted example value).
+- Responses after saving an existing document now contain the new `version` and `modifiedAt` (`saveAndFlush` in `DocumentPersistenceService`).
+- Upload no longer hangs up to 60s when RabbitMQ is down: `spring.rabbitmq.connection-timeout: 5s`, then 503.
+
 ## [0.2.2] - 2026-10-20
 ### Added
 - Standard Spring Security `SecurityFilterChain` (`permitAll()`) providing baseline security infrastructure without requiring authentication credentials.

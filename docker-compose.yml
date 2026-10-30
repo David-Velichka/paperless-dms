@@ -17,6 +17,24 @@ services:
       timeout: 5s
       retries: 5
 
+  rabbitmq:
+    image: rabbitmq:4-management
+    container_name: paperless-rabbitmq
+    restart: unless-stopped
+    environment:
+      RABBITMQ_DEFAULT_USER: paperless
+      RABBITMQ_DEFAULT_PASS: paperless_secret
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 10s
+      retries: 10
+
   paperless-rest:
     build:
       context: ./paperless-rest
@@ -29,8 +47,27 @@ services:
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/paperless
       SPRING_DATASOURCE_USERNAME: paperless_user
       SPRING_DATASOURCE_PASSWORD: paperless_secure_pass
+      SPRING_RABBITMQ_HOST: rabbitmq
+      SPRING_RABBITMQ_USERNAME: paperless
+      SPRING_RABBITMQ_PASSWORD: paperless_secret
     depends_on:
       postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+
+  paperless-ocr-worker:
+    build:
+      context: ./paperless-ocr-worker
+      dockerfile: Dockerfile
+    container_name: paperless-ocr-worker
+    restart: unless-stopped
+    environment:
+      SPRING_RABBITMQ_HOST: rabbitmq
+      SPRING_RABBITMQ_USERNAME: paperless
+      SPRING_RABBITMQ_PASSWORD: paperless_secret
+    depends_on:
+      rabbitmq:
         condition: service_healthy
 
   paperless-webui:
@@ -46,3 +83,4 @@ services:
 
 volumes:
   postgres_data:
+  rabbitmq_data:

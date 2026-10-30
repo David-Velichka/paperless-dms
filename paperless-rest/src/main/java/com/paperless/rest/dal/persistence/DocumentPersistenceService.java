@@ -27,7 +27,8 @@ public class DocumentPersistenceService {
     @Transactional
     public DocumentModel save(DocumentModel model) {
         DocumentEntity entity = documentEntityMapper.toEntity(model);
-        DocumentEntity saved = documentRepository.save(entity);
+        // Flush now, so version and modifiedAt in the returned model are already updated
+        DocumentEntity saved = documentRepository.saveAndFlush(entity);
         return documentEntityMapper.toModel(saved);
     }
 

@@ -1,7 +1,6 @@
 package com.paperless.rest.mapper;
 
 import com.paperless.rest.dto.DocumentCreateDto;
-import com.paperless.rest.dto.DocumentDto;
 import com.paperless.rest.dto.DocumentResponseDto;
 import com.paperless.rest.dto.DocumentUpdateDto;
 import com.paperless.rest.service.model.DocumentModel;
@@ -23,10 +22,4 @@ public interface DocumentDtoMapper {
     DocumentModel toModel(DocumentCreateDto dto);
 
     DocumentModel toModel(DocumentUpdateDto dto);
-
-    DocumentDto toDto(DocumentModel model);
-
-    DocumentModel toModel(DocumentDto dto);
-
-    List<DocumentDto> toDtoList(List<DocumentModel> models);
 }
