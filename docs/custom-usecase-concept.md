@@ -36,20 +36,20 @@
 
 ### Rules
 - Rule 1 (Initial State): Uploading a document automatically assigns status `RECEIVED`.
-- Rule 2 (Initial History): Creating a document automatically writes the first history entry (`status: RECEIVED, previousStatus: null, comment: "Document uploaded"`).
+- Rule 2 (Initial History): Creating a document automatically writes the first history entry (`status: RECEIVED, previousStatus: null, comment: "Document file uploaded"`).
 - Rule 3 (Immutability): Status history entries are append-only. No update or manual delete allowed (audit trail integrity).
 - Rule 4 (Lifecycle Binding): When a document is deleted, all associated status history entries are cascade-deleted.
 
 ### Logic
 - `changeStatus(documentId, targetStatus, comment)`:
-  1. Fetch Document by ID -> throw `BusinessLayerException` if missing.
-  2. Verify transition is permitted (`currentStatus -> targetStatus`) -> throw `BusinessLayerException` if invalid.
+  1. Fetch Document by ID -> throw `DocumentNotFoundException` (404) if missing.
+  2. Verify transition is permitted (`currentStatus -> targetStatus`) -> throw `InvalidStatusTransitionException` (422) if invalid.
   3. Update `document.currentStatus = targetStatus`.
   4. Create `DocumentStatusHistory` record with `previousStatus = oldStatus`, `status = targetStatus`, `timestamp = now()`, `comment`.
   5. Save Document and save History in single `@Transactional` method.
   6. Return updated domain model.
 - `getStatusHistory(documentId)`:
-  1. Verify Document exists -> throw `BusinessLayerException` if missing.
+  1. Verify Document exists -> throw `DocumentNotFoundException` (404) if missing.
   2. Fetch list from repository ordered by timestamp descending.
   3. Map DAL entities to BL domain models via MapStruct.
 
@@ -68,10 +68,11 @@
 1. **Step 1: Document Ingestion (Upload)**
    - Client sends PDF via `POST /api/v1/documents/upload`.
    - Business service saves document with `currentStatus = RECEIVED`.
-   - Business service logs initial history record: `(status: RECEIVED, comment: "Initial upload")`.
+   - Business service logs initial history record: `(status: RECEIVED, comment: "Document file uploaded")`.
+   - REST server sends an OCR job (`OcrMessage`) to RabbitMQ queue `paperless.ocr.queue`.
 
 2. **Step 2: Processing (OCR / Inspection)**
-   - Background worker or processor picks up document.
+   - `paperless-ocr-worker` receives the OCR job from the queue (Sprint 3: only logged, Sprint 4: real OCR).
    - Status transitions to `PROCESSING`.
    - History entry recorded.
 

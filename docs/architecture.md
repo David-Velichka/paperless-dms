@@ -67,7 +67,7 @@ The business layer never sees JPA entities. Controllers only see DTOs and domain
 | Message contains only document id, filename, content type, upload time | Queue messages should be small. The worker will load the file from RustFS by reference (Sprint 4) instead of receiving the PDF bytes through the broker. |
 | Direct exchange `paperless.document.exchange` + routing key `document.ocr` | Producer does not need to know the queue. Later workers (GenAI) can get their own queue and routing key. |
 | `@Transactional` on `uploadDocument` + transacted RabbitMQ channel | Metadata, history and message belong together. The message is only delivered after the DB commit, so the worker never gets an id that is not in the database yet. If the broker is down, nothing is saved. |
-| Worker rejects invalid messages without requeue | A message without document id can never succeed. Requeueing it would create an endless redelivery loop. |
+| Worker: 3 retries with backoff, then reject without requeue | Short failures (e.g. a service not ready yet) get a second chance. After that the message is dropped instead of being redelivered endlessly. Messages without document id can never succeed and are rejected at once (excluded from retry). |
 | Separate worker application | Heavy OCR work must not block HTTP threads and can be scaled independently. |
 | Durable queue declared by both REST and worker | Declaration is idempotent, so the start order of the containers does not matter. |
 | RFC 7807 `ProblemDetail` for all errors | Standard error format, no stack traces or internal messages for the client. |

@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - RabbitMQ 4 broker container (`paperless-rabbitmq`) with management UI and health check in `docker-compose.yml`.
 - `OcrMessageProducer` publishes an `OcrMessage` to `paperless.ocr.queue` on every document upload (transacted channel, delivered after the database commit).
 - New `paperless-ocr-worker` Spring Boot application consuming the OCR queue and logging received jobs (OCR processing itself follows in Sprint 4).
+- Worker listener retry: 3 retries with backoff (1s, 2s, 4s), then reject without requeue. Invalid messages (no document id) are not retried.
 - `MessageQueueException` mapped to HTTP 503 Service Unavailable when the broker is not reachable.
 - `PUT /api/v1/documents/{id}` to update document metadata (title).
 - GitHub Actions CI workflow (backend tests, worker tests, web UI build, `docker compose build`).
