@@ -12,6 +12,7 @@ import com.paperless.rest.service.validation.DocumentStatusHistoryModelValidator
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.OffsetDateTime;
 import java.util.List;
@@ -26,6 +27,7 @@ public class DocumentStatusHistoryServiceImpl implements DocumentStatusHistorySe
     private final DocumentStatusHistoryModelValidator historyModelValidator;
 
     @Override
+    @Transactional
     public DocumentStatusHistoryModel changeStatus(Long documentId, DocumentStatus targetStatus, String comment) {
         if (documentId == null) {
             throw new BusinessLayerException("Document id must not be null");

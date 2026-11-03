@@ -49,7 +49,7 @@ This starts:
 Upload a PDF via the Web UI or the script below, then look at the worker log:
 
 ```bash
-./tests/sprint3-queue-check.sh        # or: .	ests\sprint3-queue-check.ps1
+./tests/sprint3-queue-check.sh        # or: .\tests\sprint3-queue-check.ps1
 docker compose logs paperless-ocr-worker
 # ... Received OCR job for document 1 (file: sample.pdf, type: application/pdf, uploaded at: ...)
 ```
@@ -91,4 +91,3 @@ The same checks run automatically in GitHub Actions on every push and pull reque
 
 - **OpenAPI 3.0 Specification**: Located at `docs/openapi.yaml`.
 - **Architecture & Design Decisions**: Located at `docs/architecture.md`.
-- **Test Scripts**: `tests/document-upload-tests.http`, `tests/custom-usecase-tests.http`, `tests/document-upload-tests.ps1/.sh`, `tests/sprint3-queue-check.ps1/.sh`.
