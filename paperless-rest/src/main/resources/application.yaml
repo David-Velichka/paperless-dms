@@ -5,6 +5,11 @@ spring:
   application:
     name: paperless-rest
 
+  servlet:
+    multipart:
+      max-file-size: 50MB
+      max-request-size: 50MB
+
   datasource:
     url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/paperless}
     username: ${SPRING_DATASOURCE_USERNAME:paperless_user}
