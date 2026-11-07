@@ -34,7 +34,7 @@ docker compose up -d --build
 
 This starts:
 1. `paperless-postgres`: PostgreSQL database on port `5432`.
-2. `paperless-rabbitmq`: RabbitMQ broker on port `5672`, management UI on port `15672` (user `paperless`, password `paperless_secret`).
+2. `paperless-rabbitmq`: RabbitMQ broker on port `5672`, management UI on port `15672` (login: `RABBITMQ_DEFAULT_USER` / `RABBITMQ_DEFAULT_PASS` from your `.env`).
 3. `paperless-rest`: Backend REST API on port `8081` (waits until PostgreSQL and RabbitMQ are healthy).
 4. `paperless-ocr-worker`: OCR worker consuming `paperless.ocr.queue` (waits until RabbitMQ is healthy).
 5. `paperless-webui`: Web Server & React SPA on port `80` (reverse proxies `/api/` to `paperless-rest:8081`).
