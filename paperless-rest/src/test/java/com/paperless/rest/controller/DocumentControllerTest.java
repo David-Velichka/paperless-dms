@@ -10,6 +10,7 @@ import com.paperless.rest.exception.MessageQueueException;
 import com.paperless.rest.mapper.DocumentDtoMapper;
 import com.paperless.rest.service.DocumentService;
 import com.paperless.rest.service.model.DocumentModel;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
@@ -247,6 +248,65 @@ class DocumentControllerTest {
                 .andExpect(jsonPath("$.type").value("urn:paperless:problem:invalid-document"))
                 .andExpect(jsonPath("$.detail").value("Uploaded file must not be empty"));
         verify(documentService, never()).uploadDocument(any(), any());
+    }
+
+    // GIVEN eine Textdatei im Upload-Request
+    // WHEN POST /api/v1/documents/upload aufgerufen wird
+    // THEN wird der HTTP-Status 415 als ProblemDetail zurückgegeben und nichts gespeichert
+    @Test
+    @DisplayName("upload of a non-PDF file returns 415 ProblemDetail")
+    void uploadDocument_WithNonPdfFile_ReturnsUnsupportedMediaType() throws Exception {
+        MockMultipartFile textFile = new MockMultipartFile(
+                "file", "notes.txt", "text/plain", "Just some text".getBytes());
+
+        mockMvc.perform(multipart("/api/v1/documents/upload").file(textFile))
+                .andExpect(status().isUnsupportedMediaType())
+                .andExpect(jsonPath("$.type").value("urn:paperless:problem:unsupported-file-type"))
+                .andExpect(jsonPath("$.status").value(415));
+        verify(documentService, never()).uploadDocument(any(), any());
+    }
+
+    // GIVEN eine Datei mit Endung in Großbuchstaben (.PDF) und einem allgemeinen Content-Type
+    // WHEN POST /api/v1/documents/upload aufgerufen wird
+    // THEN wird die Datei als PDF akzeptiert (HTTP-Status 201 Created)
+    @Test
+    @DisplayName("upload accepts a .PDF file name in any case")
+    void uploadDocument_WithUpperCasePdfExtension_ReturnsCreated() throws Exception {
+        MockMultipartFile file = new MockMultipartFile(
+                "file", "SCAN.PDF", "application/octet-stream", "Dummy PDF content".getBytes());
+        DocumentModel savedModel = DocumentModel.builder().id(7L).title("SCAN.PDF").build();
+
+        when(documentService.uploadDocument(any(DocumentModel.class), any(byte[].class))).thenReturn(savedModel);
+        when(documentDtoMapper.toResponseDto(savedModel))
+                .thenReturn(DocumentResponseDto.builder().id(7L).title("SCAN.PDF").build());
+
+        mockMvc.perform(multipart("/api/v1/documents/upload").file(file))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.id").value(7L));
+    }
+
+    // GIVEN ein kaputter JSON-Body
+    // WHEN POST /api/v1/documents aufgerufen wird
+    // THEN wird der HTTP-Status 400 als ProblemDetail zurückgegeben (kein 500)
+    @Test
+    @DisplayName("malformed JSON body returns 400 ProblemDetail")
+    void createDocument_WithMalformedJson_ReturnsBadRequest() throws Exception {
+        mockMvc.perform(post("/api/v1/documents")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{bad"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(400));
+    }
+
+    // GIVEN eine nicht numerische Dokument-ID im Pfad
+    // WHEN GET /api/v1/documents/abc aufgerufen wird
+    // THEN wird der HTTP-Status 400 als ProblemDetail zurückgegeben (kein 500)
+    @Test
+    @DisplayName("non-numeric document id returns 400 ProblemDetail")
+    void getDocumentById_WithNonNumericId_ReturnsBadRequest() throws Exception {
+        mockMvc.perform(get("/api/v1/documents/abc"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(400));
     }
 
     // GIVEN eine gültige PDF-Datei, aber RabbitMQ ist nicht erreichbar

@@ -5,6 +5,7 @@ import com.paperless.rest.dto.DocumentResponseDto;
 import com.paperless.rest.dto.DocumentSearchQueryDto;
 import com.paperless.rest.dto.DocumentUpdateDto;
 import com.paperless.rest.exception.InvalidDocumentException;
+import com.paperless.rest.exception.InvalidFileTypeException;
 import com.paperless.rest.mapper.DocumentDtoMapper;
 import com.paperless.rest.service.DocumentService;
 import com.paperless.rest.service.model.DocumentModel;
@@ -18,6 +19,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.Locale;
 
 @RestController
 @RequestMapping("/api/v1/documents")
@@ -73,6 +75,16 @@ public class DocumentController {
         if (file == null || file.isEmpty()) {
             log.warn("Document upload rejected: provided file is empty or missing");
             throw new InvalidDocumentException("Uploaded file must not be empty");
+        }
+
+        // Same rule as the web UI: PDF by file name or by content type
+        String filename = file.getOriginalFilename();
+        boolean isPdf = (filename != null && filename.toLowerCase(Locale.ROOT).endsWith(".pdf"))
+                || "application/pdf".equals(file.getContentType());
+        if (!isPdf) {
+            log.warn("Document upload rejected: file is not a PDF filename='{}' contentType='{}'",
+                    filename, file.getContentType());
+            throw new InvalidFileTypeException("Only PDF documents (*.pdf) are supported");
         }
 
         String documentTitle = (title != null && !title.isBlank())

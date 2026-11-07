@@ -20,7 +20,7 @@ Content-Type: application/pdf
 < ./sample-documents/sample.pdf
 --WebAppBoundary--
 
-### 3. Upload Document without title (defaults to filename)
+### 3. Upload a non-PDF file (should return 415 Unsupported Media Type)
 POST {{baseUrl}}/documents/upload
 Content-Type: multipart/form-data; boundary=WebAppBoundary
 

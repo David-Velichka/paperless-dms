@@ -2,22 +2,30 @@ package com.paperless.rest.exception;
 
 import jakarta.persistence.OptimisticLockException;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ProblemDetail;
+import org.springframework.http.ResponseEntity;
 import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.context.request.WebRequest;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
+import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler;
 
 import java.net.URI;
 import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 import java.util.HashMap;
 import java.util.Map;
 
+// Extends ResponseEntityExceptionHandler, so Spring's own errors (bad JSON, unknown URL, wrong method...) are 4xx ProblemDetails too
 @RestControllerAdvice
 @Slf4j
-public class GlobalExceptionHandler {
+public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 
     @ExceptionHandler(DocumentNotFoundException.class)
     public ProblemDetail handleDocumentNotFound(DocumentNotFoundException ex) {
@@ -38,6 +46,17 @@ public class GlobalExceptionHandler {
         problem.setTitle("Invalid Document");
         problem.setType(URI.create("urn:paperless:problem:invalid-document"));
         problem.setProperty("timestamp", OffsetDateTime.now());
+        problem.setProperty("error", problem.getTitle());
+        problem.setProperty("message", ex.getMessage());
+        return problem;
+    }
+
+    @ExceptionHandler(InvalidFileTypeException.class)
+    public ProblemDetail handleInvalidFileType(InvalidFileTypeException ex) {
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.UNSUPPORTED_MEDIA_TYPE, ex.getMessage());
+        problem.setTitle("Unsupported File Type");
+        problem.setType(URI.create("urn:paperless:problem:unsupported-file-type"));
+        problem.setProperty("timestamp", OffsetDateTime.now(ZoneOffset.UTC));
         problem.setProperty("error", problem.getTitle());
         problem.setProperty("message", ex.getMessage());
         return problem;
@@ -105,7 +124,29 @@ public class GlobalExceptionHandler {
         return problem;
     }
 
-    @ExceptionHandler({MethodArgumentNotValidException.class, org.springframework.validation.BindException.class})
+    // 413: the upload is larger than spring.servlet.multipart.max-file-size
+    @Override
+    protected ResponseEntity<Object> handleMaxUploadSizeExceededException(
+            MaxUploadSizeExceededException ex, HttpHeaders headers, HttpStatusCode status, WebRequest request) {
+        String message = "The uploaded file is too large. The maximum size is 50 MB.";
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(status, message);
+        problem.setTitle("File Too Large");
+        problem.setType(URI.create("urn:paperless:problem:file-too-large"));
+        problem.setProperty("timestamp", OffsetDateTime.now(ZoneOffset.UTC));
+        problem.setProperty("error", problem.getTitle());
+        problem.setProperty("message", message);
+        return handleExceptionInternal(ex, problem, headers, status, request);
+    }
+
+    // @RequestBody validation: the base class handles MethodArgumentNotValidException, so it is an override here
+    @Override
+    protected ResponseEntity<Object> handleMethodArgumentNotValid(
+            MethodArgumentNotValidException ex, HttpHeaders headers, HttpStatusCode status, WebRequest request) {
+        return handleExceptionInternal(ex, handleValidationExceptions(ex), headers, status, request);
+    }
+
+    // Other binding errors (e.g. the search query parameters)
+    @ExceptionHandler(org.springframework.validation.BindException.class)
     public ProblemDetail handleValidationExceptions(org.springframework.validation.BindException ex) {
         log.warn("Input validation failure: {}", ex.getMessage());
         ProblemDetail problem = ProblemDetail.forStatusAndDetail(

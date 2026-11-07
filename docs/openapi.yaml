@@ -106,6 +106,18 @@ paths:
             application/problem+json:
               schema:
                 $ref: '#/components/schemas/ProblemDetail'
+        '413':
+          description: File is larger than 50 MB
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
+        '415':
+          description: File is not a PDF (file name does not end with .pdf and content type is not application/pdf)
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
         '503':
           description: RabbitMQ not reachable, document was not saved
           content:

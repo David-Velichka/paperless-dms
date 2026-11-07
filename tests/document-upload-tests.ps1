@@ -28,14 +28,10 @@ try {
     Write-Host "Upload failed: $_" -ForegroundColor Red
 }
 
-# 3. POST /api/documents/upload with TXT (no title)
-Write-Host "`n--- 3. Testing POST /api/v1/documents/upload without title ---" -ForegroundColor Yellow
-try {
-    $uploadTxt = curl.exe -s -X POST "$BaseUrl/documents/upload" -F "file=@$SampleTxt;type=text/plain"
-    Write-Host "Response: $uploadTxt" -ForegroundColor Green
-} catch {
-    Write-Host "Upload failed: $_" -ForegroundColor Red
-}
+# 3. Error case: non-PDF file
+Write-Host "`n--- 3. Testing POST /api/v1/documents/upload with a non-PDF file (expect 415) ---" -ForegroundColor Yellow
+$codeTxt = curl.exe -s -o /dev/null -w "%{http_code}" -X POST "$BaseUrl/documents/upload" -F "file=@$SampleTxt;type=text/plain"
+Write-Host "HTTP Status (expected 415): $codeTxt" -ForegroundColor Green
 
 # 4. Error case: Empty file
 Write-Host "`n--- 4. Testing POST /api/v1/documents/upload with empty file (expect 400) ---" -ForegroundColor Yellow

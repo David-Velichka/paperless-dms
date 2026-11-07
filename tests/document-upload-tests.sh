@@ -23,10 +23,10 @@ UPLOAD_RESP=$(curl -s -X POST "${BASE_URL}/documents/upload" \
 echo "Response: ${UPLOAD_RESP}"
 echo ""
 
-echo "--- 3. Testing POST /api/v1/documents/upload without title (default filename) ---"
-UPLOAD_TXT_RESP=$(curl -s -X POST "${BASE_URL}/documents/upload" \
+echo "--- 3. Testing POST /api/v1/documents/upload with a non-PDF file (expect 415 Unsupported Media Type) ---"
+HTTP_CODE_TXT=$(curl -s -o /dev/null -w "%{http_code}" -X POST "${BASE_URL}/documents/upload" \
   -F "file=@${SAMPLE_TXT};type=text/plain")
-echo "Response: ${UPLOAD_TXT_RESP}"
+echo "HTTP Status (expected 415): ${HTTP_CODE_TXT}"
 echo ""
 
 echo "--- 4. Testing POST /api/v1/documents/upload error case (empty file -> 400 Bad Request) ---"
