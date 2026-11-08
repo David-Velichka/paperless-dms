@@ -9,8 +9,13 @@ import com.paperless.rest.service.model.DocumentStatus;
 import com.paperless.rest.service.model.DocumentStatusHistoryModel;
 import com.paperless.rest.service.validation.DocumentStatusHistoryModelValidator;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.NullAndEmptySource;
+import org.junit.jupiter.params.provider.ValueSource;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -77,6 +82,38 @@ class DocumentStatusHistoryServiceTest {
         verify(historyModelValidator, times(1)).validateOrThrow(any(DocumentStatusHistoryModel.class));
         verify(documentPersistenceService, times(1)).save(any(DocumentModel.class));
         verify(documentStatusHistoryPersistenceService, times(1)).save(any(DocumentStatusHistoryModel.class));
+    }
+
+    // GIVEN ein Statuswechsel ohne Kommentar (null, leer oder nur Leerzeichen)
+    // WHEN changeStatus aufgerufen wird
+    // THEN wird im Verlaufseintrag null statt eines leeren Strings gespeichert
+    @ParameterizedTest
+    @NullAndEmptySource
+    @ValueSource(strings = {"   "})
+    @DisplayName("blank comment is stored as null")
+    void changeStatus_WithBlankComment_StoresNull(String comment) {
+        when(documentPersistenceService.findById(1L)).thenReturn(Optional.of(sampleDocumentModel));
+
+        documentStatusHistoryService.changeStatus(1L, DocumentStatus.PROCESSING, comment);
+
+        ArgumentCaptor<DocumentStatusHistoryModel> captor = ArgumentCaptor.forClass(DocumentStatusHistoryModel.class);
+        verify(documentStatusHistoryPersistenceService).save(captor.capture());
+        assertNull(captor.getValue().getComment());
+    }
+
+    // GIVEN ein Statuswechsel mit einem Kommentar mit Leerzeichen am Rand
+    // WHEN changeStatus aufgerufen wird
+    // THEN wird der getrimmte Kommentar im Verlaufseintrag gespeichert
+    @Test
+    @DisplayName("comment is stored trimmed")
+    void changeStatus_WithPaddedComment_StoresTrimmedComment() {
+        when(documentPersistenceService.findById(1L)).thenReturn(Optional.of(sampleDocumentModel));
+
+        documentStatusHistoryService.changeStatus(1L, DocumentStatus.PROCESSING, "  checked  ");
+
+        ArgumentCaptor<DocumentStatusHistoryModel> captor = ArgumentCaptor.forClass(DocumentStatusHistoryModel.class);
+        verify(documentStatusHistoryPersistenceService).save(captor.capture());
+        assertEquals("checked", captor.getValue().getComment());
     }
 
     // GIVEN eine Null-Dokumenten-ID bei der Statusänderung

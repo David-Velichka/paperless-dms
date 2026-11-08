@@ -10,6 +10,7 @@ import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.stereotype.Component;
 
 import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 
 /**
  * Publishes OCR jobs for uploaded documents to RabbitMQ.
@@ -26,7 +27,7 @@ public class OcrMessageProducer {
                 document.getId(),
                 document.getOriginalFilename(),
                 document.getContentType(),
-                OffsetDateTime.now());
+                OffsetDateTime.now(ZoneOffset.UTC));
         try {
             rabbitTemplate.convertAndSend(RabbitMqConfig.DOCUMENT_EXCHANGE, RabbitMqConfig.OCR_ROUTING_KEY, message);
             log.info("OCR message sent for document {} to queue {}", document.getId(), RabbitMqConfig.OCR_QUEUE);

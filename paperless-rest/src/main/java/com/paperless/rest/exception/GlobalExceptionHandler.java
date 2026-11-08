@@ -33,7 +33,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, ex.getMessage());
         problem.setTitle("Document Not Found");
         problem.setType(URI.create("urn:paperless:problem:document-not-found"));
-        problem.setProperty("timestamp", OffsetDateTime.now());
+        problem.setProperty("timestamp", OffsetDateTime.now(ZoneOffset.UTC));
         problem.setProperty("error", problem.getTitle());
         problem.setProperty("message", ex.getMessage());
         return problem;
@@ -45,7 +45,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, ex.getMessage());
         problem.setTitle("Invalid Document");
         problem.setType(URI.create("urn:paperless:problem:invalid-document"));
-        problem.setProperty("timestamp", OffsetDateTime.now());
+        problem.setProperty("timestamp", OffsetDateTime.now(ZoneOffset.UTC));
         problem.setProperty("error", problem.getTitle());
         problem.setProperty("message", ex.getMessage());
         return problem;
@@ -68,7 +68,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.UNPROCESSABLE_CONTENT, ex.getMessage());
         problem.setTitle("Invalid Status Transition");
         problem.setType(URI.create("urn:paperless:problem:invalid-status-transition"));
-        problem.setProperty("timestamp", OffsetDateTime.now());
+        problem.setProperty("timestamp", OffsetDateTime.now(ZoneOffset.UTC));
         problem.setProperty("error", problem.getTitle());
         problem.setProperty("message", ex.getMessage());
         return problem;
@@ -80,7 +80,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, ex.getMessage());
         problem.setTitle("Document Conflict");
         problem.setType(URI.create("urn:paperless:problem:document-conflict"));
-        problem.setProperty("timestamp", OffsetDateTime.now());
+        problem.setProperty("timestamp", OffsetDateTime.now(ZoneOffset.UTC));
         problem.setProperty("error", problem.getTitle());
         problem.setProperty("message", ex.getMessage());
         return problem;
@@ -92,7 +92,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, ex.getMessage());
         problem.setTitle("Bad Request");
         problem.setType(URI.create("urn:paperless:problem:business-layer-error"));
-        problem.setProperty("timestamp", OffsetDateTime.now());
+        problem.setProperty("timestamp", OffsetDateTime.now(ZoneOffset.UTC));
         problem.setProperty("error", problem.getTitle());
         problem.setProperty("message", ex.getMessage());
         return problem;
@@ -105,7 +105,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.SERVICE_UNAVAILABLE, message);
         problem.setTitle("Message Queue Unavailable");
         problem.setType(URI.create("urn:paperless:problem:message-queue-unavailable"));
-        problem.setProperty("timestamp", OffsetDateTime.now());
+        problem.setProperty("timestamp", OffsetDateTime.now(ZoneOffset.UTC));
         problem.setProperty("error", problem.getTitle());
         problem.setProperty("message", message);
         return problem;
@@ -118,7 +118,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, message);
         problem.setTitle("Conflict");
         problem.setType(URI.create("urn:paperless:problem:optimistic-lock-conflict"));
-        problem.setProperty("timestamp", OffsetDateTime.now());
+        problem.setProperty("timestamp", OffsetDateTime.now(ZoneOffset.UTC));
         problem.setProperty("error", problem.getTitle());
         problem.setProperty("message", message);
         return problem;
@@ -153,7 +153,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
                 HttpStatus.BAD_REQUEST, "Validation failed for one or more request parameters");
         problem.setTitle("Validation Failed");
         problem.setType(URI.create("urn:paperless:problem:validation-error"));
-        problem.setProperty("timestamp", OffsetDateTime.now());
+        problem.setProperty("timestamp", OffsetDateTime.now(ZoneOffset.UTC));
         problem.setProperty("error", problem.getTitle());
 
         Map<String, String> fieldErrors = new HashMap<>();
@@ -172,7 +172,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.INTERNAL_SERVER_ERROR, message);
         problem.setTitle("Internal Server Error");
         problem.setType(URI.create("urn:paperless:problem:internal-server-error"));
-        problem.setProperty("timestamp", OffsetDateTime.now());
+        problem.setProperty("timestamp", OffsetDateTime.now(ZoneOffset.UTC));
         problem.setProperty("error", problem.getTitle());
         problem.setProperty("message", message);
         return problem;

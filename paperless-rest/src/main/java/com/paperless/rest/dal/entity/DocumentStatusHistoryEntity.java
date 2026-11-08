@@ -9,12 +9,14 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 
 /**
  * Data Access Layer (DAL) Entity for document status history in PostgreSQL persistence.
  */
 @Entity
-@Table(name = "document_status_histories")
+@Table(name = "document_status_histories",
+        indexes = @Index(name = "idx_status_history_document_id", columnList = "document_id"))
 @EntityListeners(DocumentStatusHistoryEntityListener.class)
 @Getter
 @Setter
@@ -47,7 +49,7 @@ public class DocumentStatusHistoryEntity {
     @PrePersist
     protected void onCreate() {
         if (timestamp == null) {
-            timestamp = OffsetDateTime.now();
+            timestamp = OffsetDateTime.now(ZoneOffset.UTC);
         }
     }
 
