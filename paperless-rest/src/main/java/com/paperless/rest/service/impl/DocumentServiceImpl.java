@@ -3,9 +3,9 @@ package com.paperless.rest.service.impl;
 import com.paperless.rest.dal.persistence.DocumentPersistenceService;
 import com.paperless.rest.exception.BusinessLayerException;
 import com.paperless.rest.exception.DocumentNotFoundException;
-import com.paperless.rest.messaging.OcrMessageProducer;
 import com.paperless.rest.service.DocumentService;
 import com.paperless.rest.service.DocumentStatusHistoryService;
+import com.paperless.rest.service.OcrJobPublisher;
 import com.paperless.rest.service.model.DocumentModel;
 import com.paperless.rest.service.model.DocumentStatus;
 import com.paperless.rest.service.validation.DocumentModelValidator;
@@ -24,7 +24,7 @@ public class DocumentServiceImpl implements DocumentService {
     private final DocumentPersistenceService documentPersistenceService;
     private final DocumentStatusHistoryService documentStatusHistoryService;
     private final DocumentModelValidator documentModelValidator;
-    private final OcrMessageProducer ocrMessageProducer;
+    private final OcrJobPublisher ocrJobPublisher;
 
     @Override
     public DocumentModel save(DocumentModel documentModel) {
@@ -117,7 +117,7 @@ public class DocumentServiceImpl implements DocumentService {
 
         documentStatusHistoryService.createInitialHistory(saved.getId(), "Document file uploaded");
 
-        ocrMessageProducer.sendOcrMessage(saved);
+        ocrJobPublisher.sendOcrMessage(saved);
 
         return saved;
     }

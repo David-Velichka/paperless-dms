@@ -26,3 +26,9 @@ spring:
 
   flyway:
     enabled: false
+
+paperless:
+  rabbitmq:
+    exchange: paperless.document.exchange
+    ocr-queue: paperless.ocr.queue
+    ocr-routing-key: document.ocr

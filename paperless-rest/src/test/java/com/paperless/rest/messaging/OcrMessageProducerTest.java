@@ -1,12 +1,12 @@
 package com.paperless.rest.messaging;
 
-import com.paperless.rest.config.RabbitMqConfig;
+import com.paperless.rest.config.RabbitMqProperties;
 import com.paperless.rest.exception.MessageQueueException;
 import com.paperless.rest.service.model.DocumentModel;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.amqp.AmqpConnectException;
@@ -24,11 +24,18 @@ import static org.mockito.Mockito.verify;
 @ExtendWith(MockitoExtension.class)
 class OcrMessageProducerTest {
 
+    private static final RabbitMqProperties PROPERTIES =
+            new RabbitMqProperties("test.exchange", "test.queue", "test.routing");
+
     @Mock
     private RabbitTemplate rabbitTemplate;
 
-    @InjectMocks
     private OcrMessageProducer ocrMessageProducer;
+
+    @BeforeEach
+    void setUp() {
+        ocrMessageProducer = new OcrMessageProducer(rabbitTemplate, PROPERTIES);
+    }
 
     private final DocumentModel document = DocumentModel.builder()
             .id(42L)
@@ -46,7 +53,7 @@ class OcrMessageProducerTest {
 
         ArgumentCaptor<OcrMessage> captor = ArgumentCaptor.forClass(OcrMessage.class);
         verify(rabbitTemplate).convertAndSend(
-                eq(RabbitMqConfig.DOCUMENT_EXCHANGE), eq(RabbitMqConfig.OCR_ROUTING_KEY), captor.capture());
+                eq("test.exchange"), eq("test.routing"), captor.capture());
         OcrMessage message = captor.getValue();
         assertEquals(42L, message.documentId());
         assertEquals("invoice.pdf", message.originalFilename());

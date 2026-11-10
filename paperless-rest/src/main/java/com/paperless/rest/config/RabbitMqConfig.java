@@ -7,29 +7,27 @@ import org.springframework.amqp.core.Queue;
 import org.springframework.amqp.support.converter.JacksonJsonMessageConverter;
 import org.springframework.amqp.support.converter.MessageConverter;
 import org.springframework.boot.amqp.autoconfigure.RabbitTemplateCustomizer;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 @Configuration
+@EnableConfigurationProperties(RabbitMqProperties.class)
 public class RabbitMqConfig {
 
-    public static final String DOCUMENT_EXCHANGE = "paperless.document.exchange";
-    public static final String OCR_QUEUE = "paperless.ocr.queue";
-    public static final String OCR_ROUTING_KEY = "document.ocr";
-
     @Bean
-    public Queue ocrQueue() {
-        return new Queue(OCR_QUEUE, true);
+    public Queue ocrQueue(RabbitMqProperties properties) {
+        return new Queue(properties.ocrQueue(), true);
     }
 
     @Bean
-    public DirectExchange documentExchange() {
-        return new DirectExchange(DOCUMENT_EXCHANGE);
+    public DirectExchange documentExchange(RabbitMqProperties properties) {
+        return new DirectExchange(properties.exchange());
     }
 
     @Bean
-    public Binding ocrBinding(Queue ocrQueue, DirectExchange documentExchange) {
-        return BindingBuilder.bind(ocrQueue).to(documentExchange).with(OCR_ROUTING_KEY);
+    public Binding ocrBinding(Queue ocrQueue, DirectExchange documentExchange, RabbitMqProperties properties) {
+        return BindingBuilder.bind(ocrQueue).to(documentExchange).with(properties.ocrRoutingKey());
     }
 
     @Bean
