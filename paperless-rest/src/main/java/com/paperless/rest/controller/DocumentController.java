@@ -39,21 +39,21 @@ public class DocumentController {
 
     @GetMapping("/{id}")
     public ResponseEntity<DocumentResponseDto> getDocumentById(@PathVariable Long id) {
-        log.info("REST request to get document: {}", id);
+        log.info("REST request to get document documentId={}", id);
         DocumentModel model = documentService.findById(id);
         return ResponseEntity.ok(documentDtoMapper.toResponseDto(model));
     }
 
     @GetMapping("/search")
     public ResponseEntity<List<DocumentResponseDto>> searchDocuments(@Valid @ModelAttribute DocumentSearchQueryDto searchQuery) {
-        log.info("REST request to search documents with query: {}", searchQuery.getQuery());
+        log.info("REST request to search documents query='{}'", searchQuery.getQuery());
         List<DocumentModel> results = documentService.search(searchQuery.getQuery());
         return ResponseEntity.ok(documentDtoMapper.toResponseDtoList(results));
     }
 
     @PostMapping
     public ResponseEntity<DocumentResponseDto> createDocument(@Valid @RequestBody DocumentCreateDto dto) {
-        log.info("REST request to create document metadata: {}", dto.getTitle());
+        log.info("REST request to create document metadata title='{}'", dto.getTitle());
         DocumentModel model = documentDtoMapper.toModel(dto);
         DocumentModel saved = documentService.save(model);
         return ResponseEntity.status(HttpStatus.CREATED).body(documentDtoMapper.toResponseDto(saved));
@@ -61,7 +61,7 @@ public class DocumentController {
 
     @PutMapping("/{id}")
     public ResponseEntity<DocumentResponseDto> updateDocument(@PathVariable Long id, @Valid @RequestBody DocumentUpdateDto dto) {
-        log.info("REST request to update document metadata: {}", id);
+        log.info("REST request to update document metadata documentId={}", id);
         DocumentModel changes = documentDtoMapper.toModel(dto);
         DocumentModel updated = documentService.update(id, changes);
         return ResponseEntity.ok(documentDtoMapper.toResponseDto(updated));
@@ -73,7 +73,7 @@ public class DocumentController {
             @RequestParam("file") MultipartFile file,
             @RequestParam(value = "title", required = false) String title) throws IOException {
         if (file == null || file.isEmpty()) {
-            log.warn("Document upload rejected: provided file is empty or missing");
+            log.warn("Document upload rejected because the file is empty or missing");
             throw new InvalidDocumentException("Uploaded file must not be empty");
         }
 
@@ -82,7 +82,7 @@ public class DocumentController {
         boolean isPdf = (filename != null && filename.toLowerCase(Locale.ROOT).endsWith(".pdf"))
                 || "application/pdf".equals(file.getContentType());
         if (!isPdf) {
-            log.warn("Document upload rejected: file is not a PDF filename='{}' contentType='{}'",
+            log.warn("Document upload rejected because the file is not a PDF filename='{}' contentType='{}'",
                     filename, file.getContentType());
             throw new InvalidFileTypeException("Only PDF documents (*.pdf) are supported");
         }
@@ -91,7 +91,7 @@ public class DocumentController {
                 ? title
                 : (file.getOriginalFilename() != null ? file.getOriginalFilename() : "document");
 
-        log.info("REST request to upload document: {} (filename: {})", documentTitle, file.getOriginalFilename());
+        log.info("REST request to upload document title='{}' filename='{}'", documentTitle, file.getOriginalFilename());
 
         DocumentModel model = DocumentModel.builder()
                 .title(documentTitle)
@@ -106,7 +106,7 @@ public class DocumentController {
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteDocument(@PathVariable Long id) {
-        log.info("REST request to delete document: {}", id);
+        log.info("REST request to delete document documentId={}", id);
         documentService.deleteById(id);
         return ResponseEntity.noContent().build();
     }

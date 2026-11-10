@@ -43,7 +43,7 @@ sequenceDiagram
     S-->>C: saved model
     C-->>UI: 201 Created + DocumentResponseDto
     MQ->>W: OcrMessage (JSON)
-    W->>W: log "Received OCR job for document {id}"
+    W->>W: log "Received OCR job documentId={id}"
 ```
 
 If RabbitMQ is not reachable (connect timeout 5s, `spring.rabbitmq.connection-timeout`), the producer throws `MessageQueueException`, the transaction rolls back (no document row, no history row) and the client gets `503 Service Unavailable`.

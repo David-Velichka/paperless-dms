@@ -33,9 +33,9 @@ public class OcrMessageProducer implements OcrJobPublisher {
                 OffsetDateTime.now(ZoneOffset.UTC));
         try {
             rabbitTemplate.convertAndSend(rabbitMqProperties.exchange(), rabbitMqProperties.ocrRoutingKey(), message);
-            log.info("OCR message sent for document {} to queue {}", document.getId(), rabbitMqProperties.ocrQueue());
+            log.info("OCR message sent documentId={} queue={}", document.getId(), rabbitMqProperties.ocrQueue());
         } catch (AmqpException ex) {
-            log.error("Failed to send OCR message for document {}", document.getId(), ex);
+            log.error("Failed to send OCR message documentId={}", document.getId(), ex);
             throw new MessageQueueException("Document " + document.getId() + " could not be queued for OCR", ex);
         }
     }

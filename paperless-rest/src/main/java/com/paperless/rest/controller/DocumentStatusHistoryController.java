@@ -25,7 +25,7 @@ public class DocumentStatusHistoryController {
 
     @GetMapping("/{documentId}/history")
     public ResponseEntity<List<DocumentStatusHistoryDto>> getHistoryForDocument(@PathVariable Long documentId) {
-        log.info("REST request to get status history for document: {}", documentId);
+        log.info("REST request to get status history documentId={}", documentId);
         List<DocumentStatusHistoryModel> models = documentStatusHistoryService.getHistoryByDocumentId(documentId);
         return ResponseEntity.ok(documentStatusHistoryMapper.toDtoList(models));
     }
@@ -34,7 +34,7 @@ public class DocumentStatusHistoryController {
     public ResponseEntity<DocumentStatusHistoryDto> changeDocumentStatus(
             @PathVariable Long documentId,
             @Valid @RequestBody DocumentStatusChangeRequestDto request) {
-        log.info("REST request to change status of document {} to {}",
+        log.info("REST request to change document status documentId={} targetStatus={}",
                 documentId, request.getStatus());
         DocumentStatusHistoryModel result = documentStatusHistoryService.changeStatus(
                 documentId, request.getStatus(), request.getComment());
@@ -43,7 +43,7 @@ public class DocumentStatusHistoryController {
 
     @GetMapping("/status-history/{id}")
     public ResponseEntity<DocumentStatusHistoryDto> getHistoryById(@PathVariable Long id) {
-        log.info("REST request to get document status history entry: {}", id);
+        log.info("REST request to get status history entry historyId={}", id);
         DocumentStatusHistoryModel model = documentStatusHistoryService.findById(id);
         return ResponseEntity.ok(documentStatusHistoryMapper.toDto(model));
     }

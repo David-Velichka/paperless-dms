@@ -14,4 +14,4 @@ DOCUMENT_ID=$(echo "$RESPONSE" | sed -n 's/.*"id":\([0-9]*\).*/\1/p')
 sleep 2
 echo ""
 echo "--- paperless-ocr-worker log for document $DOCUMENT_ID ---"
-docker compose logs paperless-ocr-worker | grep "Received OCR job for document $DOCUMENT_ID "
+docker compose logs paperless-ocr-worker | grep "Received OCR job documentId=$DOCUMENT_ID "

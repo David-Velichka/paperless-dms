@@ -33,7 +33,7 @@ public class DocumentServiceImpl implements DocumentService {
         }
         documentModelValidator.validateOrThrow(documentModel);
 
-        log.info("Saving document model: {}", documentModel.getTitle());
+        log.info("Saving document model title='{}'", documentModel.getTitle());
         boolean isNew = (documentModel.getId() == null);
         if (isNew && documentModel.getCurrentStatus() == null) {
             documentModel = documentModel.toBuilder().currentStatus(DocumentStatus.RECEIVED).build();
@@ -51,7 +51,7 @@ public class DocumentServiceImpl implements DocumentService {
             throw new BusinessLayerException("Document changes must not be null");
         }
         DocumentModel existing = findById(id);
-        log.info("Updating metadata of document {}", id);
+        log.info("Updating document metadata documentId={}", id);
         DocumentModel updated = existing.toBuilder().title(changes.getTitle()).build();
         return save(updated);
     }
@@ -61,7 +61,7 @@ public class DocumentServiceImpl implements DocumentService {
         if (id == null) {
             throw new BusinessLayerException("Document id must not be null");
         }
-        log.debug("Finding document by id: {}", id);
+        log.debug("Finding document by id documentId={}", id);
         return documentPersistenceService.findById(id)
                 .orElseThrow(() -> new DocumentNotFoundException("Document with id " + id + " not found"));
     }
@@ -74,7 +74,7 @@ public class DocumentServiceImpl implements DocumentService {
 
     @Override
     public List<DocumentModel> search(String query) {
-        log.info("Searching documents with query: {}", query);
+        log.info("Searching documents query='{}'", query);
         if (query == null || query.isBlank()) {
             return findAll();
         }
@@ -87,9 +87,9 @@ public class DocumentServiceImpl implements DocumentService {
             log.debug("Document id is null, ignoring delete request");
             return;
         }
-        log.info("Deleting document by id: {}", id);
+        log.info("Deleting document by id documentId={}", id);
         if (!documentPersistenceService.existsById(id)) {
-            log.debug("Document with id {} does not exist, deletion is idempotent", id);
+            log.debug("Document does not exist, deletion is idempotent documentId={}", id);
             return;
         }
         documentStatusHistoryService.deleteByDocumentId(id);
@@ -108,7 +108,7 @@ public class DocumentServiceImpl implements DocumentService {
         }
         documentModelValidator.validateOrThrow(documentModel);
 
-        log.info("Uploading document: {} (size: {} bytes)", documentModel.getTitle(), content.length);
+        log.info("Uploading document title='{}' sizeBytes={}", documentModel.getTitle(), content.length);
 
         if (documentModel.getCurrentStatus() == null) {
             documentModel = documentModel.toBuilder().currentStatus(DocumentStatus.RECEIVED).build();

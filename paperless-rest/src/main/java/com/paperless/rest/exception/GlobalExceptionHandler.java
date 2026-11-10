@@ -29,7 +29,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 
     @ExceptionHandler(DocumentNotFoundException.class)
     public ProblemDetail handleDocumentNotFound(DocumentNotFoundException ex) {
-        log.warn("Document not found: {}", ex.getMessage());
+        log.warn("Document not found message='{}'", ex.getMessage());
         ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, ex.getMessage());
         problem.setTitle("Document Not Found");
         problem.setType(URI.create("urn:paperless:problem:document-not-found"));
@@ -41,7 +41,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 
     @ExceptionHandler(InvalidDocumentException.class)
     public ProblemDetail handleInvalidDocument(InvalidDocumentException ex) {
-        log.warn("Invalid document payload: {}", ex.getMessage());
+        log.warn("Invalid document payload message='{}'", ex.getMessage());
         ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, ex.getMessage());
         problem.setTitle("Invalid Document");
         problem.setType(URI.create("urn:paperless:problem:invalid-document"));
@@ -64,7 +64,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 
     @ExceptionHandler(InvalidStatusTransitionException.class)
     public ProblemDetail handleInvalidTransition(InvalidStatusTransitionException ex) {
-        log.warn("Invalid lifecycle transition: {}", ex.getMessage());
+        log.warn("Invalid lifecycle transition message='{}'", ex.getMessage());
         ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.UNPROCESSABLE_CONTENT, ex.getMessage());
         problem.setTitle("Invalid Status Transition");
         problem.setType(URI.create("urn:paperless:problem:invalid-status-transition"));
@@ -76,7 +76,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 
     @ExceptionHandler(DocumentConflictException.class)
     public ProblemDetail handleDocumentConflict(DocumentConflictException ex) {
-        log.warn("Document conflict: {}", ex.getMessage());
+        log.warn("Document conflict message='{}'", ex.getMessage());
         ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, ex.getMessage());
         problem.setTitle("Document Conflict");
         problem.setType(URI.create("urn:paperless:problem:document-conflict"));
@@ -88,7 +88,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 
     @ExceptionHandler(BusinessLayerException.class)
     public ProblemDetail handleBusinessLayerException(BusinessLayerException ex) {
-        log.warn("Business layer exception occurred: {}", ex.getMessage());
+        log.warn("Business layer exception occurred message='{}'", ex.getMessage());
         ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, ex.getMessage());
         problem.setTitle("Bad Request");
         problem.setType(URI.create("urn:paperless:problem:business-layer-error"));
@@ -100,7 +100,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 
     @ExceptionHandler(MessageQueueException.class)
     public ProblemDetail handleMessageQueueException(MessageQueueException ex) {
-        log.error("Message queue unavailable: {}", ex.getMessage());
+        log.error("Message queue unavailable message='{}'", ex.getMessage());
         String message = "The document could not be queued for processing. Please try again later.";
         ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.SERVICE_UNAVAILABLE, message);
         problem.setTitle("Message Queue Unavailable");
@@ -113,7 +113,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 
     @ExceptionHandler({OptimisticLockException.class, ObjectOptimisticLockingFailureException.class})
     public ProblemDetail handleOptimisticLock(Exception ex) {
-        log.warn("Concurrent update conflict detected: {}", ex.getMessage());
+        log.warn("Concurrent update conflict detected message='{}'", ex.getMessage());
         String message = "The document was modified concurrently by another transaction. Please refresh and try again.";
         ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, message);
         problem.setTitle("Conflict");
@@ -148,7 +148,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     // Other binding errors (e.g. the search query parameters)
     @ExceptionHandler(org.springframework.validation.BindException.class)
     public ProblemDetail handleValidationExceptions(org.springframework.validation.BindException ex) {
-        log.warn("Input validation failure: {}", ex.getMessage());
+        log.warn("Input validation failure message='{}'", ex.getMessage());
         ProblemDetail problem = ProblemDetail.forStatusAndDetail(
                 HttpStatus.BAD_REQUEST, "Validation failed for one or more request parameters");
         problem.setTitle("Validation Failed");

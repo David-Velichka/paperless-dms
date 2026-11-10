@@ -37,7 +37,7 @@ public class DocumentModelValidator implements Validator<DocumentModel> {
         Set<ConstraintViolation<DocumentModel>> violations = validate(obj);
         if (!violations.isEmpty()) {
             ConstraintViolation<DocumentModel> violation = violations.iterator().next();
-            log.warn("Validation failure on DocumentModel: {} - {}", violation.getPropertyPath(), violation.getMessage());
+            log.warn("Validation failure on DocumentModel property={} message='{}'", violation.getPropertyPath(), violation.getMessage());
             throw new BusinessLayerException("Validation failed for Document: " + violation.getMessage());
         }
     }

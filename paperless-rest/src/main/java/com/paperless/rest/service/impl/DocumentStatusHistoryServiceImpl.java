@@ -42,7 +42,7 @@ public class DocumentStatusHistoryServiceImpl implements DocumentStatusHistorySe
 
         DocumentStatus previousStatus = documentModel.getCurrentStatus() != null ? documentModel.getCurrentStatus() : DocumentStatus.RECEIVED;
 
-        log.info("Transitioning document {} status from {} to {}", documentId, previousStatus, targetStatus);
+        log.info("Transitioning document status documentId={} from={} to={}", documentId, previousStatus, targetStatus);
 
         documentModel.transitionTo(targetStatus);
 
@@ -70,7 +70,7 @@ public class DocumentStatusHistoryServiceImpl implements DocumentStatusHistorySe
         if (!documentPersistenceService.existsById(documentId)) {
             throw new DocumentNotFoundException("Document with id " + documentId + " not found");
         }
-        log.debug("Fetching status history for document id: {}", documentId);
+        log.debug("Fetching status history documentId={}", documentId);
         return documentStatusHistoryPersistenceService.findByDocumentIdOrderByTimestampDesc(documentId);
     }
 

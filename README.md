@@ -51,7 +51,7 @@ Upload a PDF via the Web UI or the script below, then look at the worker log:
 ```bash
 ./tests/sprint3-queue-check.sh        # or: .\tests\sprint3-queue-check.ps1
 docker compose logs paperless-ocr-worker
-# ... Received OCR job for document 1 (file: sample.pdf, type: application/pdf, uploaded at: ...)
+# ... Received OCR job documentId=1 filename='sample.pdf' contentType=application/pdf uploadedAt=...
 ```
 
 ### Step 3: Verify Service Status

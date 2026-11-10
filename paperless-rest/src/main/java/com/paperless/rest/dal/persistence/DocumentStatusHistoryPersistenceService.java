@@ -46,7 +46,7 @@ public class DocumentStatusHistoryPersistenceService {
     public void deleteByDocumentId(Long documentId) {
         if (documentId != null) {
             documentStatusHistoryRepository.deleteByDocumentId(documentId);
-            log.info("Status history for document {} deleted from database", documentId);
+            log.info("Status history deleted from database documentId={}", documentId);
         }
     }
 }
