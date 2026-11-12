@@ -72,7 +72,19 @@ class DocumentModelTest {
             "REVIEW_PENDING, REJECTED, true",
             "REVIEW_PENDING, RECEIVED, false",
             "COMPLETED, REJECTED, false",
-            "REJECTED, RECEIVED, false"
+            "REJECTED, RECEIVED, false",
+            "RECEIVED, REVIEW_PENDING, false",
+            "PROCESSING, RECEIVED, false",
+            "PROCESSING, PROCESSING, false",
+            "REVIEW_PENDING, REVIEW_PENDING, false",
+            "COMPLETED, RECEIVED, false",
+            "COMPLETED, PROCESSING, false",
+            "COMPLETED, REVIEW_PENDING, false",
+            "COMPLETED, COMPLETED, false",
+            "REJECTED, PROCESSING, false",
+            "REJECTED, REVIEW_PENDING, false",
+            "REJECTED, COMPLETED, false",
+            "REJECTED, REJECTED, false"
     })
     void canTransitionTo_FollowsLifecycle(DocumentStatus current, DocumentStatus target, boolean expected) {
         assertEquals(expected, current.canTransitionTo(target));
