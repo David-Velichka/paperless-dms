@@ -25,6 +25,20 @@ A lightweight Document Management System developed as part of the **Software Eng
 - Docker & Docker Compose installed and running.
 - (Optional for local development) JDK 25 and Node.js 20+.
 
+### Step 0: Create the `.env` file
+User names and passwords are not stored in the repository. Copy the example file and set your own values:
+
+```bash
+cp .env.example .env          # Windows PowerShell: Copy-Item .env.example .env
+```
+
+| Variable | Used for |
+|---|---|
+| `POSTGRES_USER`, `POSTGRES_PASSWORD` | PostgreSQL container and the database login of `paperless-rest` |
+| `RABBITMQ_DEFAULT_USER`, `RABBITMQ_DEFAULT_PASS` | RabbitMQ container, `paperless-rest` and `paperless-ocr-worker` |
+
+`.env` is listed in `.gitignore` and must never be committed. If you change the PostgreSQL values after the first start, the existing database volume keeps the old login (use `docker compose down -v` to recreate it).
+
 ### Step 1: Start Services with Docker Compose
 From the repository root (`paperless-dms/`):
 
@@ -43,6 +57,7 @@ This starts:
 - **Paperless Web UI**: Open your browser at [http://localhost/](http://localhost/)
 - **Backend Health Check**: [http://localhost/api/v1/health](http://localhost/api/v1/health) (or directly via [http://localhost:8081/api/v1/health](http://localhost:8081/api/v1/health))
 - **REST API Endpoints**: [http://localhost/api/v1/documents](http://localhost/api/v1/documents)
+- **Swagger UI** (generated API documentation, backend port only): [http://localhost:8081/swagger-ui/index.html](http://localhost:8081/swagger-ui/index.html)
 - **RabbitMQ Management UI**: [http://localhost:15672](http://localhost:15672)
 
 ### Sprint 3 Check: Upload leads to a worker log entry
@@ -91,3 +106,19 @@ The same checks run automatically in GitHub Actions on every push and pull reque
 
 - **OpenAPI 3.0 Specification**: Located at `docs/openapi.yaml`.
 - **Architecture & Design Decisions**: Located at `docs/architecture.md`.
+
+---
+
+## 5. Document Status Lifecycle
+
+Every document has a status. A change is only accepted along these transitions, every other change is answered with `422 Unprocessable Content` (see `docs/openapi.yaml`):
+
+| From | Allowed target status |
+|---|---|
+| `RECEIVED` | `PROCESSING`, `REJECTED` |
+| `PROCESSING` | `REVIEW_PENDING`, `REJECTED` |
+| `REVIEW_PENDING` | `COMPLETED`, `REJECTED`, `PROCESSING` |
+| `COMPLETED` | none (final) |
+| `REJECTED` | none (final) |
+
+The backend accepts all 7 transitions above. The web UI currently offers 4 of them (`RECEIVED` to `PROCESSING`, `PROCESSING` to `REVIEW_PENDING`, `REVIEW_PENDING` to `COMPLETED` or `REJECTED`), which is the happy path described in `docs/custom-usecase-concept.md`. Every change is stored in the status history with an optional comment (no comment is stored as `null`).

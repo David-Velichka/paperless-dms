@@ -4,6 +4,28 @@ All notable changes to the Paperless Document Management System will be document
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.1] - 2026-11-13
+### Added
+- `.env` / `.env.example` for all user names and passwords, `docker-compose.yml` and both `application.yaml` files only reference variables. CI copies `.env.example` before `docker compose build`.
+- Backend PDF check on upload (`InvalidFileTypeException`, HTTP 415) and HTTP 413 for files above 50 MB, both as `ProblemDetail`.
+- `GlobalExceptionHandler` extends `ResponseEntityExceptionHandler`: malformed JSON, unknown enum values, wrong path types, unknown URLs, wrong methods and missing parts now return 4xx `ProblemDetail` instead of 500.
+- `AuditableEntity` (`@MappedSuperclass`) with `createdAt` and `modifiedAt`, used by `DocumentEntity`.
+- `OcrJobPublisher` interface, the business layer no longer depends on the messaging package.
+- `RabbitMqProperties` (`paperless.rabbitmq.*`) with validation: the backend does not start if a name is blank.
+- Index on `document_status_histories.document_id`.
+- Swagger UI at `http://localhost:8081/swagger-ui/index.html` (springdoc 3.2.0).
+- README: `.env` setup, Swagger UI and the status lifecycle.
+
+### Changed
+- All log statements use the format `event text key=value`.
+- Timestamps are created in UTC.
+- A blank status change comment is stored as `null`.
+- Upload test scripts expect 415 for a non-PDF file. The worker log line is `Received OCR job documentId=...`, the queue check scripts were adapted.
+- `DocumentModelTest` covers all 25 status pairs.
+
+### Removed
+- Unused entity mapping methods in `DocumentStatusHistoryMapper` (the DAL has its own mapper).
+
 ## [0.3.0] - 2026-10-30
 ### Added
 - RabbitMQ 4 broker container (`paperless-rabbitmq`) with management UI and health check in `docker-compose.yml`.
