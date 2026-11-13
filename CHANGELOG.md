@@ -26,6 +26,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Removed
 - Unused entity mapping methods in `DocumentStatusHistoryMapper` (the DAL has its own mapper).
 
+### Fixed
+- Deleting a document is one transaction (`DocumentServiceImpl.deleteById`), so the document and its status history are removed together or not at all.
+
 ## [0.3.0] - 2026-10-30
 ### Added
 - RabbitMQ 4 broker container (`paperless-rabbitmq`) with management UI and health check in `docker-compose.yml`.

@@ -82,7 +82,7 @@ public class DocumentController {
         boolean isPdf = (filename != null && filename.toLowerCase(Locale.ROOT).endsWith(".pdf"))
                 || "application/pdf".equals(file.getContentType());
         if (!isPdf) {
-            log.warn("Document upload rejected because the file is not a PDF filename='{}' contentType='{}'",
+            log.warn("Document upload rejected because the file is not a PDF filename='{}' contentType={}",
                     filename, file.getContentType());
             throw new InvalidFileTypeException("Only PDF documents (*.pdf) are supported");
         }

@@ -81,7 +81,9 @@ public class DocumentServiceImpl implements DocumentService {
         return documentPersistenceService.searchByTitle(query);
     }
 
+    // One transaction: the status history is only deleted together with the document
     @Override
+    @Transactional
     public void deleteById(Long id) {
         if (id == null) {
             log.debug("Document id is null, ignoring delete request");
