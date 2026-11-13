@@ -14,18 +14,18 @@ public class DocumentEntityListener {
 
     @PostPersist
     public void onPostPersist(DocumentEntity entity) {
-        log.debug("DAL persistence event: DocumentEntity persisted with id={}, title='{}'", entity.getId(), entity.getTitle());
+        log.debug("DAL persistence event: DocumentEntity persisted documentId={} title='{}'", entity.getId(), entity.getTitle());
     }
 
     @PostUpdate
     public void onPostUpdate(DocumentEntity entity) {
-        log.debug("DAL persistence event: DocumentEntity updated with id={}, status={}, version={}",
+        log.debug("DAL persistence event: DocumentEntity updated documentId={} status={} version={}",
                 entity.getId(), entity.getCurrentStatus(), entity.getVersion());
     }
 
     @PostRemove
     public void onPostRemove(DocumentEntity entity) {
-        log.debug("DAL persistence event: DocumentEntity removed with id={}", entity.getId());
+        log.debug("DAL persistence event: DocumentEntity removed documentId={}", entity.getId());
     }
 }
 

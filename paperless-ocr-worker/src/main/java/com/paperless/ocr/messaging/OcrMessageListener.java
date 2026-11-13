@@ -16,12 +16,12 @@ public class OcrMessageListener {
     @RabbitListener(queues = RabbitMqConfig.OCR_QUEUE)
     public void receiveOcrMessage(OcrMessage message) {
         if (message == null || message.documentId() == null) {
-            log.error("Rejected invalid OCR message without document id: {}", message);
+            log.error("Rejected invalid OCR message without document id message={}", message);
             // Do not requeue, otherwise the broken message would be redelivered endlessly
             throw new AmqpRejectAndDontRequeueException("OCR message without document id");
         }
 
-        log.info("Received OCR job for document {} (file: {}, type: {}, uploaded at: {})",
+        log.info("Received OCR job documentId={} filename='{}' contentType={} uploadedAt={}",
                 message.documentId(), message.originalFilename(), message.contentType(), message.uploadedAt());
     }
 }

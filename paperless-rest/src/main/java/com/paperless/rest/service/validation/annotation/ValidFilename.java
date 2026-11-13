@@ -10,7 +10,7 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
- * Custom constraint annotation matching the pattern demonstrated in course Slide 18.
+ * Custom constraint annotation for file names.
  * Ensures filenames do not contain path traversal sequences or illegal control characters.
  */
 @Documented

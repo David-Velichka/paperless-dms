@@ -3,9 +3,9 @@ package com.paperless.rest.service.impl;
 import com.paperless.rest.dal.persistence.DocumentPersistenceService;
 import com.paperless.rest.exception.BusinessLayerException;
 import com.paperless.rest.exception.DocumentNotFoundException;
-import com.paperless.rest.messaging.OcrMessageProducer;
 import com.paperless.rest.service.DocumentService;
 import com.paperless.rest.service.DocumentStatusHistoryService;
+import com.paperless.rest.service.OcrJobPublisher;
 import com.paperless.rest.service.model.DocumentModel;
 import com.paperless.rest.service.model.DocumentStatus;
 import com.paperless.rest.service.validation.DocumentModelValidator;
@@ -24,7 +24,7 @@ public class DocumentServiceImpl implements DocumentService {
     private final DocumentPersistenceService documentPersistenceService;
     private final DocumentStatusHistoryService documentStatusHistoryService;
     private final DocumentModelValidator documentModelValidator;
-    private final OcrMessageProducer ocrMessageProducer;
+    private final OcrJobPublisher ocrJobPublisher;
 
     @Override
     public DocumentModel save(DocumentModel documentModel) {
@@ -33,7 +33,7 @@ public class DocumentServiceImpl implements DocumentService {
         }
         documentModelValidator.validateOrThrow(documentModel);
 
-        log.info("Saving document model: {}", documentModel.getTitle());
+        log.info("Saving document model title='{}'", documentModel.getTitle());
         boolean isNew = (documentModel.getId() == null);
         if (isNew && documentModel.getCurrentStatus() == null) {
             documentModel = documentModel.toBuilder().currentStatus(DocumentStatus.RECEIVED).build();
@@ -51,7 +51,7 @@ public class DocumentServiceImpl implements DocumentService {
             throw new BusinessLayerException("Document changes must not be null");
         }
         DocumentModel existing = findById(id);
-        log.info("Updating metadata of document {}", id);
+        log.info("Updating document metadata documentId={}", id);
         DocumentModel updated = existing.toBuilder().title(changes.getTitle()).build();
         return save(updated);
     }
@@ -61,7 +61,7 @@ public class DocumentServiceImpl implements DocumentService {
         if (id == null) {
             throw new BusinessLayerException("Document id must not be null");
         }
-        log.debug("Finding document by id: {}", id);
+        log.debug("Finding document by id documentId={}", id);
         return documentPersistenceService.findById(id)
                 .orElseThrow(() -> new DocumentNotFoundException("Document with id " + id + " not found"));
     }
@@ -74,22 +74,24 @@ public class DocumentServiceImpl implements DocumentService {
 
     @Override
     public List<DocumentModel> search(String query) {
-        log.info("Searching documents with query: {}", query);
+        log.info("Searching documents query='{}'", query);
         if (query == null || query.isBlank()) {
             return findAll();
         }
         return documentPersistenceService.searchByTitle(query);
     }
 
+    // One transaction: the status history is only deleted together with the document
     @Override
+    @Transactional
     public void deleteById(Long id) {
         if (id == null) {
             log.debug("Document id is null, ignoring delete request");
             return;
         }
-        log.info("Deleting document by id: {}", id);
+        log.info("Deleting document by id documentId={}", id);
         if (!documentPersistenceService.existsById(id)) {
-            log.debug("Document with id {} does not exist, deletion is idempotent", id);
+            log.debug("Document does not exist, deletion is idempotent documentId={}", id);
             return;
         }
         documentStatusHistoryService.deleteByDocumentId(id);
@@ -108,7 +110,7 @@ public class DocumentServiceImpl implements DocumentService {
         }
         documentModelValidator.validateOrThrow(documentModel);
 
-        log.info("Uploading document: {} (size: {} bytes)", documentModel.getTitle(), content.length);
+        log.info("Uploading document title='{}' sizeBytes={}", documentModel.getTitle(), content.length);
 
         if (documentModel.getCurrentStatus() == null) {
             documentModel = documentModel.toBuilder().currentStatus(DocumentStatus.RECEIVED).build();
@@ -117,7 +119,7 @@ public class DocumentServiceImpl implements DocumentService {
 
         documentStatusHistoryService.createInitialHistory(saved.getId(), "Document file uploaded");
 
-        ocrMessageProducer.sendOcrMessage(saved);
+        ocrJobPublisher.sendOcrMessage(saved);
 
         return saved;
     }

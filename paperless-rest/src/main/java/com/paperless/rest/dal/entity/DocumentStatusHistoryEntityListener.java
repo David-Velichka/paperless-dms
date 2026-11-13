@@ -13,12 +13,12 @@ public class DocumentStatusHistoryEntityListener {
 
     @PostPersist
     public void onPostPersist(DocumentStatusHistoryEntity entity) {
-        log.debug("DAL persistence event: DocumentStatusHistory recorded for documentId={}, transition={} -> {}",
+        log.debug("DAL persistence event: DocumentStatusHistory recorded documentId={} from={} to={}",
                 entity.getDocumentId(), entity.getPreviousStatus(), entity.getStatus());
     }
 
     @PostRemove
     public void onPostRemove(DocumentStatusHistoryEntity entity) {
-        log.debug("DAL persistence event: DocumentStatusHistory removed with id={}", entity.getId());
+        log.debug("DAL persistence event: DocumentStatusHistory removed historyId={}", entity.getId());
     }
 }

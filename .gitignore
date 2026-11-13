@@ -4,6 +4,9 @@
 *.DS_Store
 Thumbs.db
 
+# Local secrets (copy .env.example to .env)
+.env
+
 # Node / Frontend Build
 node_modules/
 dist/

@@ -66,4 +66,6 @@ jobs:
     needs: [paperless-rest, paperless-ocr-worker, paperless-webui]
     steps:
       - uses: actions/checkout@v4
+      # The compose file needs the variables from .env, the example file is enough for a build
+      - run: cp .env.example .env
       - run: docker compose build

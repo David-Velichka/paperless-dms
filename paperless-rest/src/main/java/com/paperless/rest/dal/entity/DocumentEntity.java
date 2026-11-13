@@ -3,12 +3,10 @@ package com.paperless.rest.dal.entity;
 import com.paperless.rest.service.model.DocumentStatus;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
-import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
-
-import java.time.OffsetDateTime;
+import lombok.experimental.SuperBuilder;
 
 /**
  * Data Access Layer (DAL) Entity for PostgreSQL persistence.
@@ -17,10 +15,10 @@ import java.time.OffsetDateTime;
 @Table(name = "documents")
 @EntityListeners(DocumentEntityListener.class)
 @Getter
-@Builder
+@SuperBuilder
 @NoArgsConstructor
 @AllArgsConstructor
-public class DocumentEntity {
+public class DocumentEntity extends AuditableEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -59,26 +57,12 @@ public class DocumentEntity {
     @Column(name = "current_status", nullable = false, length = 50)
     private DocumentStatus currentStatus;
 
-    @Column(name = "created_at", nullable = false, updatable = false)
-    private OffsetDateTime createdAt;
-
-    @Column(name = "modified_at")
-    private OffsetDateTime modifiedAt;
-
+    // createdAt and modifiedAt come from AuditableEntity
     @PrePersist
     protected void onCreate() {
-        if (createdAt == null) {
-            createdAt = OffsetDateTime.now();
-        }
         if (currentStatus == null) {
             currentStatus = DocumentStatus.RECEIVED;
         }
-        modifiedAt = OffsetDateTime.now();
-    }
-
-    @PreUpdate
-    protected void onUpdate() {
-        modifiedAt = OffsetDateTime.now();
     }
 
     @Override

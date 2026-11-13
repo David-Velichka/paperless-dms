@@ -12,8 +12,8 @@ spring:
 
   datasource:
     url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/paperless}
-    username: ${SPRING_DATASOURCE_USERNAME:paperless_user}
-    password: ${SPRING_DATASOURCE_PASSWORD:paperless_secure_pass}
+    username: ${SPRING_DATASOURCE_USERNAME}
+    password: ${SPRING_DATASOURCE_PASSWORD}
     driver-class-name: org.postgresql.Driver
 
   jpa:
@@ -28,18 +28,24 @@ spring:
   rabbitmq:
     host: ${SPRING_RABBITMQ_HOST:localhost}
     port: ${SPRING_RABBITMQ_PORT:5672}
-    username: ${SPRING_RABBITMQ_USERNAME:paperless}
-    password: ${SPRING_RABBITMQ_PASSWORD:paperless_secret}
+    username: ${SPRING_RABBITMQ_USERNAME}
+    password: ${SPRING_RABBITMQ_PASSWORD}
     # Fail fast when the broker is down (default is 60s), the upload then returns 503
     connection-timeout: 5s
 
   flyway:
     enabled: false
 
+paperless:
+  rabbitmq:
+    exchange: paperless.document.exchange
+    ocr-queue: paperless.ocr.queue
+    ocr-routing-key: document.ocr
+
 rustfs:
   endpoint: ${RUSTFS_ENDPOINT:http://localhost:9000}
-  access-key: ${RUSTFS_ROOT_USER:paperless_rustfs}
-  secret-key: ${RUSTFS_ROOT_PASSWORD:paperless_rustfs_secret}
+  access-key: ${RUSTFS_ROOT_USER:}
+  secret-key: ${RUSTFS_ROOT_PASSWORD:}
   bucket-name: paperless-documents
 
 elasticsearch:

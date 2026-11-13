@@ -15,6 +15,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 import java.util.List;
 
 @Service
@@ -41,7 +42,7 @@ public class DocumentStatusHistoryServiceImpl implements DocumentStatusHistorySe
 
         DocumentStatus previousStatus = documentModel.getCurrentStatus() != null ? documentModel.getCurrentStatus() : DocumentStatus.RECEIVED;
 
-        log.info("Transitioning document {} status from {} to {}", documentId, previousStatus, targetStatus);
+        log.info("Transitioning document status documentId={} from={} to={}", documentId, previousStatus, targetStatus);
 
         documentModel.transitionTo(targetStatus);
 
@@ -49,8 +50,9 @@ public class DocumentStatusHistoryServiceImpl implements DocumentStatusHistorySe
                 .documentId(documentId)
                 .status(targetStatus)
                 .previousStatus(previousStatus)
-                .timestamp(OffsetDateTime.now())
-                .comment(comment != null ? comment.trim() : null)
+                .timestamp(OffsetDateTime.now(ZoneOffset.UTC))
+                // No comment means null, never an empty string
+                .comment(comment != null && !comment.isBlank() ? comment.trim() : null)
                 .build();
 
         historyModelValidator.validateOrThrow(historyModel);
@@ -68,7 +70,7 @@ public class DocumentStatusHistoryServiceImpl implements DocumentStatusHistorySe
         if (!documentPersistenceService.existsById(documentId)) {
             throw new DocumentNotFoundException("Document with id " + documentId + " not found");
         }
-        log.debug("Fetching status history for document id: {}", documentId);
+        log.debug("Fetching status history documentId={}", documentId);
         return documentStatusHistoryPersistenceService.findByDocumentIdOrderByTimestampDesc(documentId);
     }
 
@@ -83,7 +85,7 @@ public class DocumentStatusHistoryServiceImpl implements DocumentStatusHistorySe
                 .documentId(documentId)
                 .status(DocumentStatus.RECEIVED)
                 .previousStatus(null)
-                .timestamp(OffsetDateTime.now())
+                .timestamp(OffsetDateTime.now(ZoneOffset.UTC))
                 .comment(note)
                 .build();
 

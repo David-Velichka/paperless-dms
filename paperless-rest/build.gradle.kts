@@ -6,7 +6,7 @@ plugins {
 }
 
 group = "com.paperless"
-version = "0.3.0"
+version = "0.3.1"
 
 java {
 	toolchain {
@@ -27,6 +27,7 @@ dependencies {
 	implementation("org.springframework.boot:spring-boot-starter-validation")
 	implementation("org.springframework.boot:spring-boot-starter-webmvc")
 	implementation("com.fasterxml.jackson.core:jackson-databind:2.18.2")
+	implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:3.2.0")
 	implementation("org.flywaydb:flyway-database-postgresql")
 	developmentOnly("org.springframework.boot:spring-boot-devtools")
 	runtimeOnly("com.h2database:h2")

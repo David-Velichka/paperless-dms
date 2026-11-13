@@ -5,7 +5,7 @@ import jakarta.validation.ConstraintViolation;
 import java.util.Set;
 
 /**
- * Generic validator interface as demonstrated in course materials (Self-Study G / Slide 21).
+ * Generic validator interface.
  *
  * @param <T> the type of entity/model to validate
  */

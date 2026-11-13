@@ -5,8 +5,8 @@ spring:
   rabbitmq:
     host: ${SPRING_RABBITMQ_HOST:localhost}
     port: ${SPRING_RABBITMQ_PORT:5672}
-    username: ${SPRING_RABBITMQ_USERNAME:paperless}
-    password: ${SPRING_RABBITMQ_PASSWORD:paperless_secret}
+    username: ${SPRING_RABBITMQ_USERNAME}
+    password: ${SPRING_RABBITMQ_PASSWORD}
     # On an unexpected error retry 3 times (1s, 2s, 4s), then reject without requeue (no endless loop)
     listener:
       simple:

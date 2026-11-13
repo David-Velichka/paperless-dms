@@ -4,7 +4,6 @@ import com.paperless.rest.dal.persistence.DocumentPersistenceService;
 import com.paperless.rest.exception.BusinessLayerException;
 import com.paperless.rest.exception.DocumentNotFoundException;
 import com.paperless.rest.exception.MessageQueueException;
-import com.paperless.rest.messaging.OcrMessageProducer;
 import com.paperless.rest.service.impl.DocumentServiceImpl;
 import com.paperless.rest.service.model.DocumentModel;
 import com.paperless.rest.service.model.DocumentStatus;
@@ -35,7 +34,7 @@ class DocumentServiceTest {
     private DocumentModelValidator documentModelValidator;
 
     @Mock
-    private OcrMessageProducer ocrMessageProducer;
+    private OcrJobPublisher ocrJobPublisher;
 
     @InjectMocks
     private DocumentServiceImpl documentService;
@@ -265,7 +264,7 @@ class DocumentServiceTest {
         verify(documentPersistenceService, times(1)).save(any(DocumentModel.class));
         verify(documentStatusHistoryService, times(1))
                 .createInitialHistory(10L, "Document file uploaded");
-        verify(ocrMessageProducer, times(1)).sendOcrMessage(expectedModel);
+        verify(ocrJobPublisher, times(1)).sendOcrMessage(expectedModel);
     }
 
     // GIVEN ein gültiges Dokument, aber RabbitMQ ist nicht erreichbar
@@ -278,7 +277,7 @@ class DocumentServiceTest {
 
         when(documentPersistenceService.save(any(DocumentModel.class))).thenReturn(savedModel);
         doThrow(new MessageQueueException("Document 11 could not be queued for OCR"))
-                .when(ocrMessageProducer).sendOcrMessage(savedModel);
+                .when(ocrJobPublisher).sendOcrMessage(savedModel);
 
         assertThrows(MessageQueueException.class,
                 () -> documentService.uploadDocument(inputModel, "content".getBytes()));
@@ -291,7 +290,7 @@ class DocumentServiceTest {
     void uploadDocument_WithNullModel_ThrowsBusinessLayerException() {
         assertThrows(BusinessLayerException.class, () -> documentService.uploadDocument(null, "content".getBytes()));
         verify(documentPersistenceService, never()).save(any());
-        verify(ocrMessageProducer, never()).sendOcrMessage(any());
+        verify(ocrJobPublisher, never()).sendOcrMessage(any());
     }
 
     // GIVEN ein DocumentModel mit leerem Dateiinhalt

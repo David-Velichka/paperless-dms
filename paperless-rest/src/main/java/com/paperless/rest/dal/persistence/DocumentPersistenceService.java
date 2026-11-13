@@ -51,7 +51,7 @@ public class DocumentPersistenceService {
     public void deleteById(Long id) {
         if (id != null && documentRepository.existsById(id)) {
             documentRepository.deleteById(id);
-            log.info("Document entity {} deleted from database", id);
+            log.info("Document entity deleted from database documentId={}", id);
         }
     }
 

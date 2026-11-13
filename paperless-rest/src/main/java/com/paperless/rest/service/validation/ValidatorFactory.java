@@ -3,7 +3,6 @@ package com.paperless.rest.service.validation;
 import jakarta.validation.Validation;
 
 /**
- * ValidatorFactory implementing the pattern demonstrated in course Slide 21.
  * Provides programmatic validators for arbitrary classes.
  */
 public class ValidatorFactory {

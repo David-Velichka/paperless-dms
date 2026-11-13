@@ -15,4 +15,4 @@ $documentId = ($response | ConvertFrom-Json).id
 
 Start-Sleep -Seconds 2
 Write-Host "`n--- paperless-ocr-worker log for document $documentId ---" -ForegroundColor Yellow
-docker compose logs paperless-ocr-worker | Select-String "Received OCR job for document $documentId "
+docker compose logs paperless-ocr-worker | Select-String "Received OCR job documentId=$documentId "

@@ -6,11 +6,15 @@ import com.paperless.rest.service.model.DocumentStatus;
 import org.junit.jupiter.api.Test;
 import org.mapstruct.factory.Mappers;
 
+import java.time.OffsetDateTime;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 
 class DocumentEntityMapperTest {
+
+    private static final OffsetDateTime CREATED = OffsetDateTime.parse("2026-11-01T10:00:00Z");
+    private static final OffsetDateTime MODIFIED = OffsetDateTime.parse("2026-11-02T11:30:00Z");
 
     private final DocumentEntityMapper mapper = Mappers.getMapper(DocumentEntityMapper.class);
 
@@ -23,6 +27,8 @@ class DocumentEntityMapperTest {
                 .id(3L)
                 .title("Receipt")
                 .currentStatus(DocumentStatus.COMPLETED)
+                .createdAt(CREATED)
+                .modifiedAt(MODIFIED)
                 .build();
 
         DocumentEntity entity = mapper.toEntity(model);
@@ -30,6 +36,8 @@ class DocumentEntityMapperTest {
         assertNotNull(entity);
         assertEquals(3L, entity.getId());
         assertEquals(DocumentStatus.COMPLETED, entity.getCurrentStatus());
+        assertEquals(CREATED, entity.getCreatedAt());
+        assertEquals(MODIFIED, entity.getModifiedAt());
     }
 
     // GIVEN eine DocumentEntity
@@ -41,6 +49,8 @@ class DocumentEntityMapperTest {
                 .id(4L)
                 .title("Report")
                 .currentStatus(DocumentStatus.REVIEW_PENDING)
+                .createdAt(CREATED)
+                .modifiedAt(MODIFIED)
                 .build();
 
         DocumentModel model = mapper.toModel(entity);
@@ -48,6 +58,8 @@ class DocumentEntityMapperTest {
         assertNotNull(model);
         assertEquals(4L, model.getId());
         assertEquals(DocumentStatus.REVIEW_PENDING, model.getCurrentStatus());
+        assertEquals(CREATED, model.getCreatedAt());
+        assertEquals(MODIFIED, model.getModifiedAt());
     }
 
     // GIVEN eine Liste von DocumentEntity Instanzen

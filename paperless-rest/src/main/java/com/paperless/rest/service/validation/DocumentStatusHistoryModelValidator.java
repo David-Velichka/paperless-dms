@@ -36,7 +36,7 @@ public class DocumentStatusHistoryModelValidator implements Validator<DocumentSt
         Set<ConstraintViolation<DocumentStatusHistoryModel>> violations = validate(obj);
         if (!violations.isEmpty()) {
             ConstraintViolation<DocumentStatusHistoryModel> violation = violations.iterator().next();
-            log.warn("Validation failure on DocumentStatusHistoryModel: {} - {}", violation.getPropertyPath(), violation.getMessage());
+            log.warn("Validation failure on DocumentStatusHistoryModel property={} message='{}'", violation.getPropertyPath(), violation.getMessage());
             throw new BusinessLayerException("Validation failed for StatusHistory: " + violation.getMessage());
         }
     }

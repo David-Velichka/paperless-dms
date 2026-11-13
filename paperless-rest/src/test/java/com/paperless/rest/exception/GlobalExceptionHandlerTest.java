@@ -1,12 +1,18 @@
 package com.paperless.rest.exception;
 
 import jakarta.persistence.OptimisticLockException;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ProblemDetail;
+import org.springframework.http.ResponseEntity;
 import org.springframework.validation.BindingResult;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.context.request.WebRequest;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
 
 import java.net.URI;
 import java.util.List;
@@ -158,6 +164,68 @@ class GlobalExceptionHandlerTest {
         Map<String, String> invalidParams = (Map<String, String>) problem.getProperties().get("invalidParams");
         assertNotNull(invalidParams);
         assertEquals("Title is required", invalidParams.get("title"));
+    }
+
+    // GIVEN eine InvalidFileTypeException, weil die hochgeladene Datei kein PDF ist
+    // WHEN die handleInvalidFileType-Methode aufgerufen wird
+    // THEN wird ein RFC 7807 ProblemDetail mit HTTP-Status 415 zurückgegeben
+    @Test
+    @DisplayName("handleInvalidFileType returns ProblemDetail 415")
+    void handleInvalidFileType_ReturnsProblemDetail415() {
+        InvalidFileTypeException ex = new InvalidFileTypeException("Only PDF documents (*.pdf) are supported");
+
+        ProblemDetail problem = handler.handleInvalidFileType(ex);
+
+        assertEquals(HttpStatus.UNSUPPORTED_MEDIA_TYPE.value(), problem.getStatus());
+        assertEquals("Unsupported File Type", problem.getTitle());
+        assertEquals("Only PDF documents (*.pdf) are supported", problem.getDetail());
+        assertEquals(URI.create("urn:paperless:problem:unsupported-file-type"), problem.getType());
+        assertNotNull(problem.getProperties().get("timestamp"));
+    }
+
+    // GIVEN ein Upload, der größer als das erlaubte Multipart-Limit ist
+    // WHEN die handleMaxUploadSizeExceededException-Methode aufgerufen wird
+    // THEN wird ein RFC 7807 ProblemDetail mit HTTP-Status 413 ohne interne Details zurückgegeben
+    @Test
+    @DisplayName("handleMaxUploadSizeExceededException returns ProblemDetail 413")
+    void handleMaxUploadSizeExceeded_ReturnsProblemDetail413() {
+        MaxUploadSizeExceededException ex = new MaxUploadSizeExceededException(52428800L);
+
+        ResponseEntity<Object> response = handler.handleMaxUploadSizeExceededException(
+                ex, new HttpHeaders(), HttpStatusCode.valueOf(413), mock(WebRequest.class));
+
+        assertEquals(413, response.getStatusCode().value());
+        ProblemDetail problem = (ProblemDetail) response.getBody();
+        assertNotNull(problem);
+        assertEquals(413, problem.getStatus());
+        assertEquals("File Too Large", problem.getTitle());
+        assertEquals("The uploaded file is too large. The maximum size is 50 MB.", problem.getDetail());
+        assertEquals(URI.create("urn:paperless:problem:file-too-large"), problem.getType());
+        assertNotNull(problem.getProperties().get("timestamp"));
+    }
+
+    // GIVEN eine MethodArgumentNotValidException bei einem ungültigen Request-Body
+    // WHEN die überschriebene handleMethodArgumentNotValid-Methode aufgerufen wird
+    // THEN bleibt der Body mit invalidParams und errors gleich und der Status ist 400
+    @Test
+    @DisplayName("handleMethodArgumentNotValid keeps invalidParams and errors in the body")
+    @SuppressWarnings("unchecked")
+    void handleMethodArgumentNotValid_ReturnsProblemDetailWithInvalidParams() {
+        MethodArgumentNotValidException ex = mock(MethodArgumentNotValidException.class);
+        BindingResult bindingResult = mock(BindingResult.class);
+        when(ex.getBindingResult()).thenReturn(bindingResult);
+        when(bindingResult.getFieldErrors())
+                .thenReturn(List.of(new FieldError("documentStatusChangeRequestDto", "comment", "Comment is too long")));
+
+        ResponseEntity<Object> response = handler.handleMethodArgumentNotValid(
+                ex, new HttpHeaders(), HttpStatusCode.valueOf(400), mock(WebRequest.class));
+
+        assertEquals(400, response.getStatusCode().value());
+        ProblemDetail problem = (ProblemDetail) response.getBody();
+        assertNotNull(problem);
+        assertEquals("Validation Failed", problem.getTitle());
+        assertEquals("Comment is too long", ((Map<String, String>) problem.getProperties().get("invalidParams")).get("comment"));
+        assertEquals("Comment is too long", ((Map<String, String>) problem.getProperties().get("errors")).get("comment"));
     }
 
     // GIVEN eine unerwartete generische Ausnahme
