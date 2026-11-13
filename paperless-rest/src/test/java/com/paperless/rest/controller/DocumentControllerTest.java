@@ -287,7 +287,7 @@ class DocumentControllerTest {
 
     // GIVEN ein kaputter JSON-Body
     // WHEN POST /api/v1/documents aufgerufen wird
-    // THEN wird der HTTP-Status 400 als ProblemDetail zurückgegeben (kein 500)
+    // THEN wird der HTTP-Status 400 als ProblemDetail zurückgegeben
     @Test
     @DisplayName("malformed JSON body returns 400 ProblemDetail")
     void createDocument_WithMalformedJson_ReturnsBadRequest() throws Exception {
@@ -295,17 +295,19 @@ class DocumentControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{bad"))
                 .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.title").value("Bad Request"))
                 .andExpect(jsonPath("$.status").value(400));
     }
 
     // GIVEN eine nicht numerische Dokument-ID im Pfad
     // WHEN GET /api/v1/documents/abc aufgerufen wird
-    // THEN wird der HTTP-Status 400 als ProblemDetail zurückgegeben (kein 500)
+    // THEN wird der HTTP-Status 400 als ProblemDetail zurückgegeben
     @Test
     @DisplayName("non-numeric document id returns 400 ProblemDetail")
     void getDocumentById_WithNonNumericId_ReturnsBadRequest() throws Exception {
         mockMvc.perform(get("/api/v1/documents/abc"))
                 .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.title").value("Bad Request"))
                 .andExpect(jsonPath("$.status").value(400));
     }
 

@@ -6,7 +6,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.3.1] - 2026-11-13
 ### Added
-- `.env` / `.env.example` for all user names and passwords, `docker-compose.yml` and both `application.yaml` files only reference variables. CI copies `.env.example` before `docker compose build`.
+- Configuration through `.env` (template: `.env.example`): `docker-compose.yml` and both `application.yaml` files reference variables. CI copies `.env.example` before `docker compose build`.
 - Backend PDF check on upload (`InvalidFileTypeException`, HTTP 415) and HTTP 413 for files above 50 MB, both as `ProblemDetail`.
 - `GlobalExceptionHandler` extends `ResponseEntityExceptionHandler`: malformed JSON, unknown enum values, wrong path types, unknown URLs, wrong methods and missing parts now return 4xx `ProblemDetail` instead of 500.
 - `AuditableEntity` (`@MappedSuperclass`) with `createdAt` and `modifiedAt`, used by `DocumentEntity`.
@@ -25,6 +25,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Removed
 - Unused entity mapping methods in `DocumentStatusHistoryMapper` (the DAL has its own mapper).
+- Shell variants of the test scripts (`tests/*.sh`), the PowerShell and `.http` versions stay.
 
 ### Fixed
 - Deleting a document is one transaction (`DocumentServiceImpl.deleteById`), so the document and its status history are removed together or not at all.
@@ -68,7 +69,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.2.1] - 2026-10-20
 ### Removed
-- Removed user authentication, JWT tokens, login endpoints (`/api/v1/auth/login`, `/api/v1/auth/me`), and user management per course lecturer guidance to streamline architecture and eliminate out-of-scope complexity.
+- Removed user authentication, JWT tokens, login endpoints (`/api/v1/auth/login`, `/api/v1/auth/me`), and user management to streamline architecture and eliminate out-of-scope complexity.
 
 ## [0.2.0] - 2026-10-15
 ### Added

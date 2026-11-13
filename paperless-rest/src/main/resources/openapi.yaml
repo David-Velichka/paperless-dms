@@ -2,12 +2,12 @@ openapi: 3.0.3
 info:
   title: Paperless REST API
   description: RESTful API for Paperless Document Management System (SWEN3 Semester Project)
-  version: 0.3.0
+  version: 0.3.1
 
 servers:
   - url: http://localhost:8081
     description: Direct Backend REST Server
-  - url: http://localhost:80/api/v1
+  - url: http://localhost:80
     description: Via Nginx Reverse Proxy
 
 paths:
@@ -298,7 +298,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/DocumentStatusHistoryDto'
         '400':
-          description: Invalid transition or validation error
+          description: Validation error
           content:
             application/problem+json:
               schema:

@@ -197,6 +197,7 @@ class GlobalExceptionHandlerTest {
         assertEquals(413, response.getStatusCode().value());
         ProblemDetail problem = (ProblemDetail) response.getBody();
         assertNotNull(problem);
+        assertEquals(413, problem.getStatus());
         assertEquals("File Too Large", problem.getTitle());
         assertEquals("The uploaded file is too large. The maximum size is 50 MB.", problem.getDetail());
         assertEquals(URI.create("urn:paperless:problem:file-too-large"), problem.getType());

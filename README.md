@@ -26,7 +26,7 @@ A lightweight Document Management System developed as part of the **Software Eng
 - (Optional for local development) JDK 25 and Node.js 20+.
 
 ### Step 0: Create the `.env` file
-User names and passwords are not stored in the repository. Copy the example file and set your own values:
+User names and passwords are read from a `.env` file. Copy the example file and set your own values:
 
 ```bash
 cp .env.example .env          # Windows PowerShell: Copy-Item .env.example .env
@@ -64,7 +64,7 @@ This starts:
 Upload a PDF via the Web UI or the script below, then look at the worker log:
 
 ```bash
-./tests/sprint3-queue-check.sh        # or: .\tests\sprint3-queue-check.ps1
+.\tests\sprint3-queue-check.ps1
 docker compose logs paperless-ocr-worker
 # ... Received OCR job documentId=1 filename='sample.pdf' contentType=application/pdf uploadedAt=...
 ```
@@ -98,7 +98,7 @@ cd ../paperless-ocr-worker
 ./gradlew test
 ```
 
-The same checks run automatically in GitHub Actions on every push and pull request.
+The same checks run automatically in GitHub Actions on every push to `main` and the sprint branches and on every pull request to `main`.
 
 ---
 

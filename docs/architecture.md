@@ -1,6 +1,6 @@
 # Architecture & Design Decisions
 
-State: Sprint 3 (version 0.3.0). Planned components of later sprints are shown dashed.
+State: Sprint 3 (version 0.3.1). Planned components of later sprints are shown dashed.
 
 ## 1. Components
 
@@ -18,7 +18,7 @@ flowchart LR
     MQ -.-> GenAI["GenAI worker"]
 ```
 
-All services run with `docker compose up`. The REST server and the worker wait for healthy PostgreSQL and RabbitMQ containers (`depends_on` + `healthcheck`).
+All services run with `docker compose up`. The REST server waits for healthy PostgreSQL and RabbitMQ containers, the worker for RabbitMQ (`depends_on` + `healthcheck`).
 
 ## 2. Document Upload Flow
 
@@ -79,6 +79,8 @@ The business layer never sees JPA entities. Controllers only see DTOs and domain
 | :--- | :--- | :--- |
 | Presentation | `MethodArgumentNotValidException`, `BindException` (Jakarta Validation) | 400 with `invalidParams` |
 | Business | `BusinessLayerException`, `DocumentNotFoundException`, `InvalidStatusTransitionException` | 400 / 404 / 422 |
+| Upload | `InvalidFileTypeException`, `MaxUploadSizeExceededException` | 415 / 413 |
+| Spring MVC | malformed JSON, wrong path type, unknown URL, wrong method (`ResponseEntityExceptionHandler`) | 400 / 404 / 405 |
 | Data access | `ObjectOptimisticLockingFailureException` | 409 |
 | Messaging | `MessageQueueException` (wraps `AmqpException`) | 503 |
 | Anything else | `Exception` fallback | 500 with generic message |
@@ -91,8 +93,8 @@ Logging uses SLF4J (`@Slf4j`): `info` for requests and important state changes (
 - Controller slice tests with `@WebMvcTest` + `MockMvc` check status codes, JSON and ProblemDetail responses.
 - Persistence tests with `@DataJpaTest` on an in-memory H2 database (PostgreSQL mode), so no container is needed.
 - Coverage with JaCoCo: `./gradlew check` fails below 70% line coverage. Report: `paperless-rest/build/reports/jacoco/test/html/index.html`.
-- Manual end-to-end check of the queue: `tests/sprint3-queue-check.ps1` (or `.sh`).
-- GitHub Actions (`.github/workflows/ci.yml`) runs all tests, the web UI build and `docker compose build` on every push and pull request.
+- Manual end-to-end check of the queue: `tests/sprint3-queue-check.ps1`.
+- GitHub Actions (`.github/workflows/ci.yml`) runs all tests, the web UI build and `docker compose build` on every push to `main` and the sprint branches and on every pull request to `main`.
 
 ## 7. Lessons Learned
 

@@ -10,7 +10,7 @@ $SampleTxt = Join-Path $ScriptDir "sample-documents\sample.txt"
 Write-Host "=== Paperless DMS Document Upload API Tests ===" -ForegroundColor Cyan
 Write-Host "Target: $BaseUrl`n"
 
-# 1. GET /api/documents
+# 1. GET /api/v1/documents
 Write-Host "--- 1. Testing GET /api/v1/documents ---" -ForegroundColor Yellow
 try {
     $docs = Invoke-RestMethod -Uri "$BaseUrl/documents" -Method Get -ContentType "application/json"
@@ -19,7 +19,7 @@ try {
     Write-Host "Request failed: $_" -ForegroundColor Red
 }
 
-# 2. POST /api/documents/upload with PDF
+# 2. POST /api/v1/documents/upload with PDF
 Write-Host "`n--- 2. Testing POST /api/v1/documents/upload with PDF ---" -ForegroundColor Yellow
 try {
     $upload = curl.exe -s -X POST "$BaseUrl/documents/upload" -F "title=Sample Invoice 2026" -F "file=@$SamplePdf;type=application/pdf"
@@ -41,7 +41,7 @@ $code = curl.exe -s -o /dev/null -w "%{http_code}" -X POST "$BaseUrl/documents/u
 Remove-Item $emptyFile -Force
 Write-Host "HTTP Status (expected 400): $code" -ForegroundColor Green
 
-# 5. GET /api/documents
+# 5. GET /api/v1/documents
 Write-Host "`n--- 5. Testing GET /api/v1/documents (verification) ---" -ForegroundColor Yellow
 $docsAfter = Invoke-RestMethod -Uri "$BaseUrl/documents" -Method Get -ContentType "application/json"
 Write-Host "Found $($docsAfter.Count) documents." -ForegroundColor Green

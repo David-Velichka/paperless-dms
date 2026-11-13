@@ -35,7 +35,9 @@ class RabbitMqPropertiesTest {
                 .run(context -> {
                     RabbitMqProperties properties = context.getBean(RabbitMqProperties.class);
                     assertNotNull(properties);
+                    assertEquals("ex", properties.exchange());
                     assertEquals("queue", properties.ocrQueue());
+                    assertEquals("key", properties.ocrRoutingKey());
                 });
     }
 
@@ -51,7 +53,7 @@ class RabbitMqPropertiesTest {
                         "paperless.rabbitmq.ocr-queue= ",
                         "paperless.rabbitmq.ocr-routing-key=key")
                 .run(context -> {
-                    assertTrue(context.getStartupFailure() != null);
+                    assertNotNull(context.getStartupFailure());
                     assertTrue(context.getStartupFailure().getMessage().contains("paperless.rabbitmq"));
                 });
     }
