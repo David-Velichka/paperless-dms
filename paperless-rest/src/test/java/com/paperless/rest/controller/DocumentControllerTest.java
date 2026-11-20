@@ -7,6 +7,7 @@ import com.paperless.rest.dto.DocumentUpdateDto;
 import com.paperless.rest.exception.BusinessLayerException;
 import com.paperless.rest.exception.DocumentNotFoundException;
 import com.paperless.rest.exception.MessageQueueException;
+import com.paperless.rest.exception.StorageException;
 import com.paperless.rest.mapper.DocumentDtoMapper;
 import com.paperless.rest.service.DocumentService;
 import com.paperless.rest.service.model.DocumentModel;
@@ -327,6 +328,38 @@ class DocumentControllerTest {
                 .andExpect(jsonPath("$.title").value("Message Queue Unavailable"))
                 .andExpect(jsonPath("$.status").value(503))
                 .andExpect(jsonPath("$.type").value("urn:paperless:problem:message-queue-unavailable"));
+    }
+
+    // GIVEN eine gültige PDF-Datei, aber der Object Storage ist nicht erreichbar
+    // WHEN POST /api/v1/documents/upload aufgerufen wird
+    // THEN wird der HTTP-Status 503 Service Unavailable als ProblemDetail zurückgegeben
+    @Test
+    void uploadDocument_WhenStorageUnavailable_ReturnsServiceUnavailable() throws Exception {
+        MockMultipartFile file = new MockMultipartFile(
+                "file", "sample.pdf", "application/pdf", "Dummy PDF content".getBytes());
+
+        when(documentService.uploadDocument(any(DocumentModel.class), any(byte[].class)))
+                .thenThrow(new StorageException("Document file could not be stored", new RuntimeException("down")));
+
+        mockMvc.perform(multipart("/api/v1/documents/upload").file(file))
+                .andExpect(status().isServiceUnavailable())
+                .andExpect(jsonPath("$.title").value("Storage Unavailable"))
+                .andExpect(jsonPath("$.status").value(503))
+                .andExpect(jsonPath("$.type").value("urn:paperless:problem:storage-unavailable"));
+    }
+
+    // GIVEN ein existierendes Dokument, aber der Object Storage ist nicht erreichbar
+    // WHEN DELETE /api/v1/documents/{id} aufgerufen wird
+    // THEN wird der HTTP-Status 503 Service Unavailable als ProblemDetail zurückgegeben
+    @Test
+    void deleteDocument_WhenStorageUnavailable_ReturnsServiceUnavailable() throws Exception {
+        doThrow(new StorageException("Document file could not be deleted", new RuntimeException("down")))
+                .when(documentService).deleteById(1L);
+
+        mockMvc.perform(delete("/api/v1/documents/1"))
+                .andExpect(status().isServiceUnavailable())
+                .andExpect(jsonPath("$.title").value("Storage Unavailable"))
+                .andExpect(jsonPath("$.type").value("urn:paperless:problem:storage-unavailable"));
     }
 
     // --- Action 6: updateDocument ---

@@ -4,6 +4,7 @@ import com.paperless.rest.dal.persistence.DocumentPersistenceService;
 import com.paperless.rest.exception.BusinessLayerException;
 import com.paperless.rest.exception.DocumentNotFoundException;
 import com.paperless.rest.service.DocumentService;
+import com.paperless.rest.service.DocumentStorage;
 import com.paperless.rest.service.DocumentStatusHistoryService;
 import com.paperless.rest.service.OcrJobPublisher;
 import com.paperless.rest.service.model.DocumentModel;
@@ -15,6 +16,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -25,6 +28,7 @@ public class DocumentServiceImpl implements DocumentService {
     private final DocumentStatusHistoryService documentStatusHistoryService;
     private final DocumentModelValidator documentModelValidator;
     private final OcrJobPublisher ocrJobPublisher;
+    private final DocumentStorage documentStorage;
 
     @Override
     public DocumentModel save(DocumentModel documentModel) {
@@ -81,7 +85,8 @@ public class DocumentServiceImpl implements DocumentService {
         return documentPersistenceService.searchByTitle(query);
     }
 
-    // One transaction: the status history is only deleted together with the document
+    // One transaction: the status history is only deleted together with the document.
+    // The file is deleted last: if the storage fails, the transaction is rolled back and nothing is lost.
     @Override
     @Transactional
     public void deleteById(Long id) {
@@ -90,15 +95,22 @@ public class DocumentServiceImpl implements DocumentService {
             return;
         }
         log.info("Deleting document by id documentId={}", id);
-        if (!documentPersistenceService.existsById(id)) {
+        Optional<DocumentModel> document = documentPersistenceService.findById(id);
+        if (document.isEmpty()) {
             log.debug("Document does not exist, deletion is idempotent documentId={}", id);
             return;
         }
         documentStatusHistoryService.deleteByDocumentId(id);
         documentPersistenceService.deleteById(id);
+
+        String storagePath = document.get().getStoragePath();
+        if (storagePath != null && !storagePath.isBlank()) {
+            documentStorage.delete(storagePath);
+        }
     }
 
-    // One transaction for metadata, history and OCR message: if the queue is not reachable, nothing is saved
+    // S3 has no transactions: the file is stored first, then metadata, history and OCR message are saved in one
+    // database transaction. If one of these steps fails, the file is deleted again.
     @Override
     @Transactional
     public DocumentModel uploadDocument(DocumentModel documentModel, byte[] content) {
@@ -112,15 +124,33 @@ public class DocumentServiceImpl implements DocumentService {
 
         log.info("Uploading document title='{}' sizeBytes={}", documentModel.getTitle(), content.length);
 
-        if (documentModel.getCurrentStatus() == null) {
-            documentModel = documentModel.toBuilder().currentStatus(DocumentStatus.RECEIVED).build();
+        String storageKey = UUID.randomUUID() + ".pdf";
+        documentStorage.store(storageKey, content, documentModel.getContentType());
+
+        try {
+            DocumentModel toSave = documentModel.toBuilder().storagePath(storageKey).build();
+            if (toSave.getCurrentStatus() == null) {
+                toSave = toSave.toBuilder().currentStatus(DocumentStatus.RECEIVED).build();
+            }
+            DocumentModel saved = documentPersistenceService.save(toSave);
+
+            documentStatusHistoryService.createInitialHistory(saved.getId(), "Document file uploaded");
+
+            ocrJobPublisher.sendOcrMessage(saved);
+
+            return saved;
+        } catch (RuntimeException ex) {
+            deleteStoredFileQuietly(storageKey);
+            throw ex;
         }
-        DocumentModel saved = documentPersistenceService.save(documentModel);
+    }
 
-        documentStatusHistoryService.createInitialHistory(saved.getId(), "Document file uploaded");
-
-        ocrJobPublisher.sendOcrMessage(saved);
-
-        return saved;
+    // Compensation for a failed upload: a failure here must not hide the original exception
+    private void deleteStoredFileQuietly(String storageKey) {
+        try {
+            documentStorage.delete(storageKey);
+        } catch (RuntimeException ex) {
+            log.warn("Orphan file could not be deleted after failed upload key={}", storageKey, ex);
+        }
     }
 }

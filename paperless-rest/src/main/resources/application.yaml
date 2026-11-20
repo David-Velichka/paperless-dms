@@ -41,12 +41,11 @@ paperless:
     exchange: paperless.document.exchange
     ocr-queue: paperless.ocr.queue
     ocr-routing-key: document.ocr
-
-rustfs:
-  endpoint: ${RUSTFS_ENDPOINT:http://localhost:9000}
-  access-key: ${RUSTFS_ROOT_USER:}
-  secret-key: ${RUSTFS_ROOT_PASSWORD:}
-  bucket-name: paperless-documents
+  rustfs:
+    endpoint: ${RUSTFS_ENDPOINT:http://localhost:9000}
+    access-key: ${RUSTFS_ACCESS_KEY}
+    secret-key: ${RUSTFS_SECRET_KEY}
+    bucket: paperless-documents
 
 elasticsearch:
   uris: ${ELASTICSEARCH_URIS:http://localhost:9200}

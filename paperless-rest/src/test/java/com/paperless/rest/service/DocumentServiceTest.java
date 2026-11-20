@@ -4,6 +4,7 @@ import com.paperless.rest.dal.persistence.DocumentPersistenceService;
 import com.paperless.rest.exception.BusinessLayerException;
 import com.paperless.rest.exception.DocumentNotFoundException;
 import com.paperless.rest.exception.MessageQueueException;
+import com.paperless.rest.exception.StorageException;
 import com.paperless.rest.service.impl.DocumentServiceImpl;
 import com.paperless.rest.service.model.DocumentModel;
 import com.paperless.rest.service.model.DocumentStatus;
@@ -11,6 +12,7 @@ import com.paperless.rest.service.validation.DocumentModelValidator;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -35,6 +37,9 @@ class DocumentServiceTest {
 
     @Mock
     private OcrJobPublisher ocrJobPublisher;
+
+    @Mock
+    private DocumentStorage documentStorage;
 
     @InjectMocks
     private DocumentServiceImpl documentService;
@@ -199,7 +204,7 @@ class DocumentServiceTest {
     // THEN werden Verläufe und das Dokument gelöscht
     @Test
     void deleteById_WhenExists_DeletesDocumentAndHistory() {
-        when(documentPersistenceService.existsById(1L)).thenReturn(true);
+        when(documentPersistenceService.findById(1L)).thenReturn(Optional.of(sampleModel));
         doNothing().when(documentStatusHistoryService).deleteByDocumentId(1L);
         doNothing().when(documentPersistenceService).deleteById(1L);
 
@@ -209,16 +214,56 @@ class DocumentServiceTest {
         verify(documentPersistenceService, times(1)).deleteById(1L);
     }
 
+    // GIVEN ein existierendes Dokument mit Storage-Key
+    // WHEN deleteById aufgerufen wird
+    // THEN wird auch die Datei im Object Storage gelöscht
+    @Test
+    void deleteById_WhenDocumentHasStoragePath_DeletesFileFromStorage() {
+        DocumentModel withFile = sampleModel.toBuilder().storagePath("abc.pdf").build();
+        when(documentPersistenceService.findById(1L)).thenReturn(Optional.of(withFile));
+
+        documentService.deleteById(1L);
+
+        verify(documentStorage, times(1)).delete("abc.pdf");
+    }
+
+    // GIVEN ein existierendes Dokument ohne Storage-Key
+    // WHEN deleteById aufgerufen wird
+    // THEN wird der Object Storage nicht aufgerufen
+    @Test
+    void deleteById_WhenDocumentHasNoStoragePath_SkipsStorage() {
+        when(documentPersistenceService.findById(1L)).thenReturn(Optional.of(sampleModel));
+
+        documentService.deleteById(1L);
+
+        verify(documentPersistenceService, times(1)).deleteById(1L);
+        verifyNoInteractions(documentStorage);
+    }
+
+    // GIVEN ein existierendes Dokument, aber der Object Storage ist nicht erreichbar
+    // WHEN deleteById aufgerufen wird
+    // THEN wird die StorageException weitergegeben, damit die Transaktion zurückgerollt wird
+    @Test
+    void deleteById_WhenStorageFails_PropagatesStorageException() {
+        DocumentModel withFile = sampleModel.toBuilder().storagePath("abc.pdf").build();
+        when(documentPersistenceService.findById(1L)).thenReturn(Optional.of(withFile));
+        doThrow(new StorageException("Document file could not be deleted", new RuntimeException("down")))
+                .when(documentStorage).delete("abc.pdf");
+
+        assertThrows(StorageException.class, () -> documentService.deleteById(1L));
+    }
+
     // GIVEN eine nicht existierende Dokument-ID
     // WHEN deleteById aufgerufen wird
     // THEN wird die Operation idempotent ohne Ausnahme abgeschlossen
     @Test
     void deleteById_WhenNotFound_CompletesIdempotentlyWithoutException() {
-        when(documentPersistenceService.existsById(99L)).thenReturn(false);
+        when(documentPersistenceService.findById(99L)).thenReturn(Optional.empty());
 
         assertDoesNotThrow(() -> documentService.deleteById(99L));
         verify(documentPersistenceService, never()).deleteById(any());
         verify(documentStatusHistoryService, never()).deleteByDocumentId(any());
+        verifyNoInteractions(documentStorage);
     }
 
     // GIVEN eine Null-Dokument-ID zum Löschen
@@ -267,6 +312,77 @@ class DocumentServiceTest {
         verify(ocrJobPublisher, times(1)).sendOcrMessage(expectedModel);
     }
 
+    // GIVEN ein gültiges DocumentModel und Dateiinhalt
+    // WHEN uploadDocument aufgerufen wird
+    // THEN wird die Datei unter einem UUID-Key gespeichert und derselbe Key als storagePath abgelegt
+    @Test
+    void uploadDocument_StoresFileAndSetsStoragePath() {
+        DocumentModel inputModel = DocumentModel.builder()
+                .title("Upload Test").originalFilename("test.pdf").contentType("application/pdf").build();
+        when(documentPersistenceService.save(any(DocumentModel.class)))
+                .thenAnswer(invocation -> ((DocumentModel) invocation.getArgument(0)).toBuilder().id(10L).build());
+        byte[] content = "dummy content".getBytes();
+
+        DocumentModel result = documentService.uploadDocument(inputModel, content);
+
+        ArgumentCaptor<String> keyCaptor = ArgumentCaptor.forClass(String.class);
+        verify(documentStorage).store(keyCaptor.capture(), eq(content), eq("application/pdf"));
+        String key = keyCaptor.getValue();
+        assertTrue(key.matches("[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\\.pdf"));
+        assertEquals(key, result.getStoragePath());
+        verify(documentStorage, never()).delete(any());
+    }
+
+    // GIVEN ein gültiges Dokument, aber der Object Storage ist nicht erreichbar
+    // WHEN uploadDocument aufgerufen wird
+    // THEN wird die StorageException weitergegeben und nichts in Datenbank oder Queue geschrieben
+    @Test
+    void uploadDocument_WhenStorageFails_SavesNothing() {
+        DocumentModel inputModel = DocumentModel.builder().title("Upload Test").originalFilename("test.pdf").build();
+        doThrow(new StorageException("Document file could not be stored", new RuntimeException("down")))
+                .when(documentStorage).store(anyString(), any(byte[].class), any());
+
+        assertThrows(StorageException.class,
+                () -> documentService.uploadDocument(inputModel, "content".getBytes()));
+
+        verify(documentPersistenceService, never()).save(any());
+        verify(documentStatusHistoryService, never()).createInitialHistory(any(), any());
+        verify(ocrJobPublisher, never()).sendOcrMessage(any());
+        verify(documentStorage, never()).delete(any());
+    }
+
+    // GIVEN ein gespeicherter Blob, aber das Speichern der Metadaten schlägt fehl
+    // WHEN uploadDocument aufgerufen wird
+    // THEN wird der Blob wieder gelöscht und die ursprüngliche Exception weitergegeben
+    @Test
+    void uploadDocument_WhenSaveFails_DeletesStoredFile() {
+        DocumentModel inputModel = DocumentModel.builder().title("Upload Test").originalFilename("test.pdf").build();
+        when(documentPersistenceService.save(any(DocumentModel.class))).thenThrow(new IllegalStateException("db down"));
+
+        assertThrows(IllegalStateException.class,
+                () -> documentService.uploadDocument(inputModel, "content".getBytes()));
+
+        ArgumentCaptor<String> storedKey = ArgumentCaptor.forClass(String.class);
+        verify(documentStorage).store(storedKey.capture(), any(byte[].class), any());
+        verify(documentStorage).delete(storedKey.getValue());
+    }
+
+    // GIVEN ein gespeicherter Blob, aber das Löschen beim Kompensieren schlägt ebenfalls fehl
+    // WHEN uploadDocument aufgerufen wird
+    // THEN wird trotzdem die ursprüngliche Exception weitergegeben
+    @Test
+    void uploadDocument_WhenCompensationFails_StillThrowsOriginalException() {
+        DocumentModel inputModel = DocumentModel.builder().title("Upload Test").originalFilename("test.pdf").build();
+        when(documentPersistenceService.save(any(DocumentModel.class))).thenThrow(new IllegalStateException("db down"));
+        doThrow(new StorageException("Document file could not be deleted", new RuntimeException("down")))
+                .when(documentStorage).delete(anyString());
+
+        IllegalStateException ex = assertThrows(IllegalStateException.class,
+                () -> documentService.uploadDocument(inputModel, "content".getBytes()));
+
+        assertEquals("db down", ex.getMessage());
+    }
+
     // GIVEN ein gültiges Dokument, aber RabbitMQ ist nicht erreichbar
     // WHEN uploadDocument aufgerufen wird
     // THEN wird die MessageQueueException weitergegeben, damit die Transaktion zurückgerollt wird
@@ -281,6 +397,10 @@ class DocumentServiceTest {
 
         assertThrows(MessageQueueException.class,
                 () -> documentService.uploadDocument(inputModel, "content".getBytes()));
+        // Compensation: the file stored before is removed again
+        ArgumentCaptor<String> storedKey = ArgumentCaptor.forClass(String.class);
+        verify(documentStorage).store(storedKey.capture(), any(byte[].class), any());
+        verify(documentStorage).delete(storedKey.getValue());
     }
 
     // GIVEN ein Null-DocumentModel beim Upload

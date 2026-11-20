@@ -21,7 +21,8 @@ public class OcrMessageListener {
             throw new AmqpRejectAndDontRequeueException("OCR message without document id");
         }
 
-        log.info("Received OCR job documentId={} filename='{}' contentType={} uploadedAt={}",
-                message.documentId(), message.originalFilename(), message.contentType(), message.uploadedAt());
+        log.info("Received OCR job documentId={} filename='{}' contentType={} uploadedAt={} storageKey={}",
+                message.documentId(), message.originalFilename(), message.contentType(), message.uploadedAt(),
+                message.storageKey());
     }
 }
