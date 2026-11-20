@@ -22,7 +22,7 @@ A lightweight Document Management System developed as part of the **Software Eng
 ## 2. Running the System Locally
 
 ### Prerequisites
-- Docker & Docker Compose installed and running.
+- Docker & Docker Compose installed and running. Give Docker Desktop about 4 GB of memory, because Elasticsearch and Kibana need it.
 - (Optional for local development) JDK 25 and Node.js 20+.
 
 ### Step 0: Create the `.env` file
@@ -36,6 +36,7 @@ cp .env.example .env          # Windows PowerShell: Copy-Item .env.example .env
 |---|---|
 | `POSTGRES_USER`, `POSTGRES_PASSWORD` | PostgreSQL container and the database login of `paperless-rest` |
 | `RABBITMQ_DEFAULT_USER`, `RABBITMQ_DEFAULT_PASS` | RabbitMQ container, `paperless-rest` and `paperless-ocr-worker` |
+| `RUSTFS_ACCESS_KEY`, `RUSTFS_SECRET_KEY` | RustFS object storage and its console login (access key at least 3, secret key at least 8 characters, empty values are refused) |
 
 `.env` is listed in `.gitignore` and must never be committed. If you change the PostgreSQL values after the first start, the existing database volume keeps the old login (use `docker compose down -v` to recreate it).
 
@@ -49,9 +50,12 @@ docker compose up -d --build
 This starts:
 1. `paperless-postgres`: PostgreSQL database on port `5432`.
 2. `paperless-rabbitmq`: RabbitMQ broker on port `5672`, management UI on port `15672` (login: `RABBITMQ_DEFAULT_USER` / `RABBITMQ_DEFAULT_PASS` from your `.env`).
-3. `paperless-rest`: Backend REST API on port `8081` (waits until PostgreSQL and RabbitMQ are healthy).
-4. `paperless-ocr-worker`: OCR worker consuming `paperless.ocr.queue` (waits until RabbitMQ is healthy).
-5. `paperless-webui`: Web Server & React SPA on port `80` (reverse proxies `/api/` to `paperless-rest:8081`).
+3. `paperless-rustfs`: RustFS object storage (S3 API) on port `9000`, web console on port `9090` (login: `RUSTFS_ACCESS_KEY` / `RUSTFS_SECRET_KEY` from your `.env`).
+4. `paperless-elasticsearch`: Elasticsearch (single node, security disabled for local use) on port `9200`.
+5. `paperless-kibana`: Kibana on port `5601` (waits until Elasticsearch is healthy).
+6. `paperless-rest`: Backend REST API on port `8081` (waits until PostgreSQL and RabbitMQ are healthy).
+7. `paperless-ocr-worker`: OCR worker consuming `paperless.ocr.queue` (waits until RabbitMQ is healthy).
+8. `paperless-webui`: Web Server & React SPA on port `80` (reverse proxies `/api/` to `paperless-rest:8081`).
 
 ### Step 2: Access the Application
 - **Paperless Web UI**: Open your browser at [http://localhost/](http://localhost/)
@@ -59,6 +63,9 @@ This starts:
 - **REST API Endpoints**: [http://localhost/api/v1/documents](http://localhost/api/v1/documents)
 - **Swagger UI** (generated API documentation, backend port only): [http://localhost:8081/swagger-ui/index.html](http://localhost:8081/swagger-ui/index.html)
 - **RabbitMQ Management UI**: [http://localhost:15672](http://localhost:15672)
+- **RustFS Console**: [http://localhost:9090](http://localhost:9090)
+- **Elasticsearch**: [http://localhost:9200](http://localhost:9200) (returns the version JSON)
+- **Kibana**: [http://localhost:5601](http://localhost:5601) (needs about a minute after the start)
 
 ### Sprint 3 Check: Upload leads to a worker log entry
 Upload a PDF via the Web UI or the script below, then look at the worker log:
@@ -73,7 +80,7 @@ docker compose logs paperless-ocr-worker
 ```bash
 docker compose ps
 ```
-All containers should report `running` (postgres and rabbitmq `healthy`).
+All containers should report `running` (postgres, rabbitmq, rustfs and elasticsearch `healthy`).
 
 ### Step 4: Stop Services
 ```bash
