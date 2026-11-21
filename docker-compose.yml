@@ -36,7 +36,7 @@ services:
       retries: 10
 
   rustfs:
-    image: rustfs/rustfs:1.0.5
+    image: rustfs/rustfs:1.0.6
     container_name: paperless-rustfs
     restart: unless-stopped
     environment:
@@ -56,7 +56,7 @@ services:
       retries: 10
 
   elasticsearch:
-    image: docker.elastic.co/elasticsearch/elasticsearch:9.4.8
+    image: docker.elastic.co/elasticsearch/elasticsearch:9.5.6
     container_name: paperless-elasticsearch
     restart: unless-stopped
     environment:
@@ -74,7 +74,7 @@ services:
       retries: 20
 
   kibana:
-    image: docker.elastic.co/kibana/kibana:9.4.8
+    image: docker.elastic.co/kibana/kibana:9.5.6
     container_name: paperless-kibana
     restart: unless-stopped
     environment:

@@ -5,13 +5,13 @@ A lightweight Document Management System developed as part of the **Software Eng
 ## 1. Technology Stack
 
 - **Java JDK**: Java 25 LTS
-- **Framework**: Spring Boot 4.1.1
+- **Framework**: Spring Boot 4.2.0
 - **Security**: Spring Security 7.1 (Stateless `SecurityFilterChain`)
 - **Persistence**: Spring Data JPA / Hibernate ORM
 - **Database**: PostgreSQL 16 (Alpine)
 - **Message Broker**: RabbitMQ 4 (Spring AMQP, JSON messages)
 - **Object Mapping**: MapStruct 1.6.2 (compile-time mappers, pure functions)
-- **Frontend SPA**: React 18, TypeScript, Vite
+- **Frontend SPA**: React 19, TypeScript, Vite
 - **Web Server / Reverse Proxy**: Nginx Alpine
 - **Testing**: JUnit 5, Mockito, MockMvc, DataJpaTest (with H2 in PostgreSQL compatibility mode), JaCoCo coverage
 - **CI**: GitHub Actions
@@ -23,7 +23,7 @@ A lightweight Document Management System developed as part of the **Software Eng
 
 ### Prerequisites
 - Docker & Docker Compose installed and running. Give Docker Desktop about 4 GB of memory, because Elasticsearch and Kibana need it.
-- (Optional for local development) JDK 25 and Node.js 20+.
+- (Optional for local development) JDK 25 and Node.js 26+.
 
 ### Step 0: Create the `.env` file
 User names and passwords are read from a `.env` file. Copy the example file and set your own values:

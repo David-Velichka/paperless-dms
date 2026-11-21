@@ -1,7 +1,7 @@
 plugins {
 	java
 	jacoco
-	id("org.springframework.boot") version "4.1.1"
+	id("org.springframework.boot") version "4.2.0"
 	id("io.spring.dependency-management") version "1.1.7"
 }
 
@@ -20,12 +20,12 @@ repositories {
 
 dependencyManagement {
 	imports {
-		mavenBom("software.amazon.awssdk:bom:2.59.1")
+		mavenBom("software.amazon.awssdk:bom:2.59.7")
 	}
 }
 
 dependencies {
-	implementation("org.springframework.boot:spring-boot-starter-amqp")
+	implementation("org.springframework.boot:spring-boot-starter-rabbitmq")
 	implementation("org.springframework.boot:spring-boot-starter-jackson")
 	implementation("org.springframework.boot:spring-boot-starter-validation")
 	implementation("software.amazon.awssdk:s3")

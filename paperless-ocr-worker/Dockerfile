@@ -1,7 +1,7 @@
 # Multi-Stage Build for the OCR Worker (Java 25)
 
 # Stage 1: Build & Dependencies Cache
-FROM eclipse-temurin:25-jdk-noble AS builder
+FROM eclipse-temurin:25-jdk-resolute AS builder
 WORKDIR /app
 
 # Copy gradle wrapper and build configs first for caching dependencies
