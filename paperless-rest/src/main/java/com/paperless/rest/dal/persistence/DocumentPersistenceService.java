@@ -47,6 +47,12 @@ public class DocumentPersistenceService {
         return documentEntityMapper.toModelList(documentRepository.findByTitleContainingIgnoreCase(query));
     }
 
+    // The order of the result is not defined
+    @Transactional(readOnly = true)
+    public List<DocumentModel> findAllByIds(List<Long> ids) {
+        return documentEntityMapper.toModelList(documentRepository.findAllById(ids));
+    }
+
     @Transactional
     public void deleteById(Long id) {
         if (id != null && documentRepository.existsById(id)) {

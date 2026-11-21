@@ -123,6 +123,21 @@ class DocumentPersistenceServiceTest {
         verify(documentRepository, times(1)).findByTitleContainingIgnoreCase("Test");
     }
 
+    // GIVEN eine Liste von Dokument-IDs
+    // WHEN findAllByIds aufgerufen wird
+    // THEN werden die passenden Entities geladen und als Models zurückgegeben
+    @Test
+    void findAllByIds_ReturnsMappedModels() {
+        when(documentRepository.findAllById(List.of(1L, 2L))).thenReturn(List.of(sampleEntity));
+        when(documentEntityMapper.toModelList(List.of(sampleEntity))).thenReturn(List.of(sampleModel));
+
+        List<DocumentModel> result = persistenceService.findAllByIds(List.of(1L, 2L));
+
+        assertEquals(1, result.size());
+        assertEquals(1L, result.get(0).getId());
+        verify(documentRepository, times(1)).findAllById(List.of(1L, 2L));
+    }
+
     // GIVEN eine existierende Dokument-ID
     // WHEN deleteById aufgerufen wird
     // THEN wird das Dokument im Repository gelöscht

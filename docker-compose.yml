@@ -103,12 +103,15 @@ services:
       RUSTFS_ENDPOINT: http://rustfs:9000
       RUSTFS_ACCESS_KEY: ${RUSTFS_ACCESS_KEY}
       RUSTFS_SECRET_KEY: ${RUSTFS_SECRET_KEY}
+      SPRING_ELASTICSEARCH_URIS: http://elasticsearch:9200
     depends_on:
       postgres:
         condition: service_healthy
       rabbitmq:
         condition: service_healthy
       rustfs:
+        condition: service_healthy
+      elasticsearch:
         condition: service_healthy
 
   paperless-ocr-worker:

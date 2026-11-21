@@ -41,6 +41,9 @@ spring:
           initial-interval: 1s
           multiplier: 2
 
+  elasticsearch:
+    uris: ${SPRING_ELASTICSEARCH_URIS:http://localhost:9200}
+
   flyway:
     enabled: false
 
@@ -56,9 +59,6 @@ paperless:
     access-key: ${RUSTFS_ACCESS_KEY}
     secret-key: ${RUSTFS_SECRET_KEY}
     bucket: paperless-documents
-
-elasticsearch:
-  uris: ${ELASTICSEARCH_URIS:http://localhost:9200}
 
 logging:
   level:

@@ -7,6 +7,7 @@ import com.paperless.rest.dto.DocumentUpdateDto;
 import com.paperless.rest.exception.BusinessLayerException;
 import com.paperless.rest.exception.DocumentNotFoundException;
 import com.paperless.rest.exception.MessageQueueException;
+import com.paperless.rest.exception.SearchException;
 import com.paperless.rest.exception.StorageException;
 import com.paperless.rest.mapper.DocumentDtoMapper;
 import com.paperless.rest.service.DocumentService;
@@ -125,6 +126,21 @@ class DocumentControllerTest {
         mockMvc.perform(get("/api/v1/documents/search").param("query", "Report"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].title").value("Financial Report"));
+    }
+
+    // GIVEN Elasticsearch ist nicht erreichbar
+    // WHEN GET /api/v1/documents/search aufgerufen wird
+    // THEN wird der HTTP-Status 503 Service Unavailable als ProblemDetail zurückgegeben
+    @Test
+    void searchDocuments_WhenSearchUnavailable_ReturnsServiceUnavailable() throws Exception {
+        when(documentService.search("Hello"))
+                .thenThrow(new SearchException("Search index could not be queried", new RuntimeException("down")));
+
+        mockMvc.perform(get("/api/v1/documents/search").param("query", "Hello"))
+                .andExpect(status().isServiceUnavailable())
+                .andExpect(jsonPath("$.status").value(503))
+                .andExpect(jsonPath("$.title").value("Search Unavailable"))
+                .andExpect(jsonPath("$.type").value("urn:paperless:problem:search-unavailable"));
     }
 
     // GIVEN ein Fehler bei der Dokumentensuche in der Geschäftslogik

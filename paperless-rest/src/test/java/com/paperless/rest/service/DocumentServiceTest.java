@@ -4,6 +4,7 @@ import com.paperless.rest.dal.persistence.DocumentPersistenceService;
 import com.paperless.rest.exception.BusinessLayerException;
 import com.paperless.rest.exception.DocumentNotFoundException;
 import com.paperless.rest.exception.MessageQueueException;
+import com.paperless.rest.exception.SearchException;
 import com.paperless.rest.exception.StorageException;
 import com.paperless.rest.service.impl.DocumentServiceImpl;
 import com.paperless.rest.service.model.DocumentModel;
@@ -41,6 +42,9 @@ class DocumentServiceTest {
 
     @Mock
     private DocumentStorage documentStorage;
+
+    @Mock
+    private DocumentSearchIndex documentSearchIndex;
 
     @InjectMocks
     private DocumentServiceImpl documentService;
@@ -171,19 +175,61 @@ class DocumentServiceTest {
         assertEquals("Test Invoice", result.get(0).getTitle());
     }
 
-    // GIVEN ein Suchbegriff
+    // GIVEN Elasticsearch findet die Dokumente 3 und 1 in dieser Reihenfolge
     // WHEN search aufgerufen wird
-    // THEN werden passende Dokumente über den Persistence Service gefiltert
+    // THEN werden die Dokumente aus der Datenbank in der Reihenfolge von Elasticsearch zurückgegeben
     @Test
-    void search_WithMatchingQuery_ReturnsFilteredDocuments() {
-        when(documentPersistenceService.searchByTitle("Invoice")).thenReturn(List.of(sampleModel));
+    void search_KeepsElasticsearchOrder() {
+        DocumentModel third = DocumentModel.builder().id(3L).title("Third").build();
+        when(documentSearchIndex.search("Hello")).thenReturn(List.of(3L, 1L));
+        when(documentPersistenceService.findAllByIds(List.of(3L, 1L))).thenReturn(List.of(sampleModel, third));
+        when(documentPersistenceService.searchByTitle("Hello")).thenReturn(List.of());
 
-        List<DocumentModel> result = documentService.search("Invoice");
+        List<DocumentModel> result = documentService.search("Hello");
 
-        assertNotNull(result);
+        assertEquals(List.of(3L, 1L), result.stream().map(DocumentModel::getId).toList());
+    }
+
+    // GIVEN Elasticsearch liefert eine ID, zu der es keine Zeile in der Datenbank gibt
+    // WHEN search aufgerufen wird
+    // THEN wird diese ID weggelassen
+    @Test
+    void search_DropsIdsWithoutDatabaseRow() {
+        when(documentSearchIndex.search("Hello")).thenReturn(List.of(9L, 1L));
+        when(documentPersistenceService.findAllByIds(List.of(9L, 1L))).thenReturn(List.of(sampleModel));
+        when(documentPersistenceService.searchByTitle("Hello")).thenReturn(List.of());
+
+        List<DocumentModel> result = documentService.search("Hello");
+
         assertEquals(1, result.size());
-        assertEquals("Test Invoice", result.get(0).getTitle());
-        verify(documentPersistenceService, times(1)).searchByTitle("Invoice");
+        assertEquals(1L, result.get(0).getId());
+    }
+
+    // GIVEN Elasticsearch und die Titelsuche finden teilweise dieselben Dokumente
+    // WHEN search aufgerufen wird
+    // THEN werden die Titeltreffer ohne Duplikate hinten angehängt
+    @Test
+    void search_AppendsTitleMatchesWithoutDuplicates() {
+        DocumentModel titleOnly = DocumentModel.builder().id(2L).title("Test Report").build();
+        when(documentSearchIndex.search("Test")).thenReturn(List.of(1L));
+        when(documentPersistenceService.findAllByIds(List.of(1L))).thenReturn(List.of(sampleModel));
+        when(documentPersistenceService.searchByTitle("Test")).thenReturn(List.of(sampleModel, titleOnly));
+
+        List<DocumentModel> result = documentService.search("Test");
+
+        assertEquals(List.of(1L, 2L), result.stream().map(DocumentModel::getId).toList());
+    }
+
+    // GIVEN der Suchindex ist nicht erreichbar
+    // WHEN search aufgerufen wird
+    // THEN wird die SearchException weitergegeben
+    @Test
+    void search_WhenIndexFails_PropagatesSearchException() {
+        when(documentSearchIndex.search("Hello"))
+                .thenThrow(new SearchException("Search index could not be queried", new RuntimeException("down")));
+
+        assertThrows(SearchException.class, () -> documentService.search("Hello"));
+        verify(documentPersistenceService, never()).searchByTitle(any());
     }
 
     // GIVEN ein leerer Suchbegriff
@@ -198,6 +244,7 @@ class DocumentServiceTest {
         assertNotNull(result);
         assertEquals(1, result.size());
         verify(documentPersistenceService, times(1)).findAll();
+        verifyNoInteractions(documentSearchIndex);
     }
 
     // GIVEN eine existierende Dokument-ID
@@ -213,6 +260,45 @@ class DocumentServiceTest {
 
         verify(documentStatusHistoryService, times(1)).deleteByDocumentId(1L);
         verify(documentPersistenceService, times(1)).deleteById(1L);
+    }
+
+    // GIVEN eine existierende Dokument-ID
+    // WHEN deleteById aufgerufen wird
+    // THEN wird auch der Eintrag im Suchindex gelöscht
+    @Test
+    void deleteById_WhenExists_DeletesIndexEntry() {
+        when(documentPersistenceService.findById(1L)).thenReturn(Optional.of(sampleModel));
+
+        documentService.deleteById(1L);
+
+        verify(documentSearchIndex, times(1)).delete(1L);
+    }
+
+    // GIVEN ein existierendes Dokument, aber der Suchindex ist nicht erreichbar
+    // WHEN deleteById aufgerufen wird
+    // THEN wird das Dokument trotzdem gelöscht und kein Fehler geworfen
+    @Test
+    void deleteById_WhenIndexFails_StillDeletesDocument() {
+        when(documentPersistenceService.findById(1L)).thenReturn(Optional.of(sampleModel));
+        doThrow(new SearchException("Search index entry could not be deleted", new RuntimeException("down")))
+                .when(documentSearchIndex).delete(1L);
+
+        assertDoesNotThrow(() -> documentService.deleteById(1L));
+        verify(documentPersistenceService, times(1)).deleteById(1L);
+    }
+
+    // GIVEN ein existierendes Dokument, aber der Object Storage ist nicht erreichbar
+    // WHEN deleteById aufgerufen wird
+    // THEN bleibt der Eintrag im Suchindex erhalten, weil die Transaktion zurückgerollt wird
+    @Test
+    void deleteById_WhenStorageFails_KeepsIndexEntry() {
+        DocumentModel withFile = sampleModel.toBuilder().storagePath("abc.pdf").build();
+        when(documentPersistenceService.findById(1L)).thenReturn(Optional.of(withFile));
+        doThrow(new StorageException("Document file could not be deleted", new RuntimeException("down")))
+                .when(documentStorage).delete("abc.pdf");
+
+        assertThrows(StorageException.class, () -> documentService.deleteById(1L));
+        verifyNoInteractions(documentSearchIndex);
     }
 
     // GIVEN ein existierendes Dokument mit Storage-Key
@@ -265,6 +351,7 @@ class DocumentServiceTest {
         verify(documentPersistenceService, never()).deleteById(any());
         verify(documentStatusHistoryService, never()).deleteByDocumentId(any());
         verifyNoInteractions(documentStorage);
+        verifyNoInteractions(documentSearchIndex);
     }
 
     // GIVEN eine Null-Dokument-ID zum Löschen

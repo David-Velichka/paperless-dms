@@ -3,6 +3,7 @@ package com.paperless.rest.service.impl;
 import com.paperless.rest.dal.persistence.DocumentPersistenceService;
 import com.paperless.rest.exception.BusinessLayerException;
 import com.paperless.rest.exception.DocumentNotFoundException;
+import com.paperless.rest.service.DocumentSearchIndex;
 import com.paperless.rest.service.DocumentService;
 import com.paperless.rest.service.DocumentStorage;
 import com.paperless.rest.service.DocumentStatusHistoryService;
@@ -15,7 +16,11 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -29,6 +34,7 @@ public class DocumentServiceImpl implements DocumentService {
     private final DocumentModelValidator documentModelValidator;
     private final OcrJobPublisher ocrJobPublisher;
     private final DocumentStorage documentStorage;
+    private final DocumentSearchIndex documentSearchIndex;
 
     @Override
     public DocumentModel save(DocumentModel documentModel) {
@@ -76,17 +82,37 @@ public class DocumentServiceImpl implements DocumentService {
         return documentPersistenceService.findAll();
     }
 
+    // Elasticsearch finds the OCR text and the file name, the database the title.
+    // Documents are always loaded from the database, so a deleted document never shows up.
     @Override
     public List<DocumentModel> search(String query) {
         log.info("Searching documents query='{}'", query);
         if (query == null || query.isBlank()) {
             return findAll();
         }
-        return documentPersistenceService.searchByTitle(query);
+        List<Long> indexIds = documentSearchIndex.search(query);
+
+        // Keep the relevance order of Elasticsearch, ids without a database row are dropped
+        Map<Long, DocumentModel> byId = new HashMap<>();
+        for (DocumentModel document : documentPersistenceService.findAllByIds(indexIds)) {
+            byId.put(document.getId(), document);
+        }
+        Map<Long, DocumentModel> results = new LinkedHashMap<>();
+        for (Long id : indexIds) {
+            if (byId.containsKey(id)) {
+                results.put(id, byId.get(id));
+            }
+        }
+        // Title matches that Elasticsearch did not find are appended
+        for (DocumentModel document : documentPersistenceService.searchByTitle(query)) {
+            results.putIfAbsent(document.getId(), document);
+        }
+        return new ArrayList<>(results.values());
     }
 
     // One transaction: the status history is only deleted together with the document.
-    // The file is deleted last: if the storage fails, the transaction is rolled back and nothing is lost.
+    // The file is deleted after the rows: if the storage fails, the transaction is rolled back and nothing is lost.
+    // The index entry is deleted last and only best effort: a stale entry never shows up, the search loads from the database.
     @Override
     @Transactional
     public void deleteById(Long id) {
@@ -106,6 +132,12 @@ public class DocumentServiceImpl implements DocumentService {
         String storagePath = document.get().getStoragePath();
         if (storagePath != null && !storagePath.isBlank()) {
             documentStorage.delete(storagePath);
+        }
+
+        try {
+            documentSearchIndex.delete(id);
+        } catch (RuntimeException ex) {
+            log.warn("Search index entry could not be deleted documentId={}", id, ex);
         }
     }
 

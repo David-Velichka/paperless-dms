@@ -197,7 +197,7 @@ paths:
                 $ref: '#/components/schemas/ProblemDetail'
     delete:
       summary: Delete document by ID
-      description: Deletes the document, its status history and its file in the object storage. Returns HTTP 204 No Content also when the document does not exist (idempotent, RFC 9110). If the object storage is not reachable, nothing is deleted and 503 is returned.
+      description: Deletes the document, its status history and its file in the object storage. Returns HTTP 204 No Content also when the document does not exist (idempotent, RFC 9110). If the object storage is not reachable, nothing is deleted and 503 is returned. The search index entry is removed last on a best-effort basis, a failure there is only logged.
       operationId: deleteDocument
       tags:
         - Documents
@@ -221,6 +221,10 @@ paths:
   /api/v1/documents/search:
     get:
       summary: Full-text search for documents
+      description: >-
+        Searches the OCR text and the original file name in Elasticsearch with fuzzy matching (typos are tolerated,
+        for example "Helo" finds "Hello"), best match first. Documents whose title contains the query (case-insensitive)
+        are appended. OCR text is searchable a few seconds after the upload, the title at once.
       operationId: searchDocuments
       tags:
         - Documents
@@ -234,7 +238,7 @@ paths:
             maxLength: 100
       responses:
         '200':
-          description: Search results
+          description: Search results, an empty array if nothing matches
           content:
             application/json:
               schema:
@@ -243,6 +247,12 @@ paths:
                   $ref: '#/components/schemas/DocumentResponseDto'
         '400':
           description: Validation error
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
+        '503':
+          description: The search index (Elasticsearch) is not reachable
           content:
             application/problem+json:
               schema:

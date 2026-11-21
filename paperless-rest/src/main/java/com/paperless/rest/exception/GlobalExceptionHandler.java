@@ -124,6 +124,19 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         return problem;
     }
 
+    @ExceptionHandler(SearchException.class)
+    public ProblemDetail handleSearchException(SearchException ex) {
+        log.error("Search index unavailable message='{}'", ex.getMessage());
+        String message = "The search is currently not available. Please try again later.";
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.SERVICE_UNAVAILABLE, message);
+        problem.setTitle("Search Unavailable");
+        problem.setType(URI.create("urn:paperless:problem:search-unavailable"));
+        problem.setProperty("timestamp", OffsetDateTime.now(ZoneOffset.UTC));
+        problem.setProperty("error", problem.getTitle());
+        problem.setProperty("message", message);
+        return problem;
+    }
+
     @ExceptionHandler({OptimisticLockException.class, ObjectOptimisticLockingFailureException.class})
     public ProblemDetail handleOptimisticLock(Exception ex) {
         log.warn("Concurrent update conflict detected message='{}'", ex.getMessage());
