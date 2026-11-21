@@ -119,19 +119,6 @@ class RustFsDocumentStorageTest {
         assertEquals("test-bucket", captor.getValue().bucket());
     }
 
-    // GIVEN RustFS antwortet auf HEAD mit einem allgemeinen 404
-    // WHEN die Anwendung startet
-    // THEN wird der Bucket ebenfalls angelegt
-    @Test
-    void ensureBucketExists_WhenPlain404_CreatesIt() {
-        doThrow(S3Exception.builder().statusCode(404).message("not found").build())
-                .when(s3Client).headBucket(any(HeadBucketRequest.class));
-
-        storage.ensureBucketExists();
-
-        verify(s3Client).createBucket(any(CreateBucketRequest.class));
-    }
-
     // GIVEN RustFS lehnt den Zugriff ab (403)
     // WHEN die Anwendung startet
     // THEN wird kein Bucket angelegt und eine StorageException geworfen

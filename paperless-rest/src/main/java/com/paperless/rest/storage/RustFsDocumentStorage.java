@@ -15,7 +15,6 @@ import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
 import software.amazon.awssdk.services.s3.model.HeadBucketRequest;
 import software.amazon.awssdk.services.s3.model.NoSuchBucketException;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
-import software.amazon.awssdk.services.s3.model.S3Exception;
 
 /**
  * Stores document files in the RustFS bucket through the S3 API.
@@ -35,12 +34,6 @@ public class RustFsDocumentStorage implements DocumentStorage {
             s3Client.headBucket(HeadBucketRequest.builder().bucket(properties.bucket()).build());
             log.info("Storage bucket exists bucket={}", properties.bucket());
         } catch (NoSuchBucketException ex) {
-            createBucket();
-        } catch (S3Exception ex) {
-            // A HEAD response has no body, so a missing bucket can also arrive as a plain 404
-            if (ex.statusCode() != 404) {
-                throw new StorageException("Storage bucket could not be checked", ex);
-            }
             createBucket();
         } catch (SdkException ex) {
             throw new StorageException("Storage bucket could not be checked", ex);
