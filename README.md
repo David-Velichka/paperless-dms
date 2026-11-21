@@ -54,7 +54,7 @@ This starts:
 4. `paperless-elasticsearch`: Elasticsearch (single node, security disabled for local use) on port `9200`.
 5. `paperless-kibana`: Kibana on port `5601` (waits until Elasticsearch is healthy).
 6. `paperless-rest`: Backend REST API on port `8081` (waits until PostgreSQL and RabbitMQ are healthy).
-7. `paperless-ocr-worker`: OCR worker consuming `paperless.ocr.queue` (waits until RabbitMQ is healthy).
+7. `paperless-ocr-worker`: OCR worker consuming `paperless.ocr.queue` (waits until RabbitMQ and RustFS are healthy).
 8. `paperless-webui`: Web Server & React SPA on port `80` (reverse proxies `/api/` to `paperless-rest:8081`).
 
 ### Step 2: Access the Application

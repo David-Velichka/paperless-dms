@@ -7,3 +7,15 @@ spring:
     listener:
       simple:
         auto-startup: false
+
+paperless:
+  rabbitmq:
+    ocr-queue: paperless.ocr.queue
+  rustfs:
+    endpoint: http://localhost:9000
+    access-key: test-access-key
+    secret-key: test-secret-key
+    bucket: paperless-documents
+  ocr:
+    tessdata-path: /usr/share/tesseract-ocr/5/tessdata
+    language: eng

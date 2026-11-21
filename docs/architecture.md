@@ -18,7 +18,7 @@ flowchart LR
     MQ -.-> GenAI["GenAI worker"]
 ```
 
-All services run with `docker compose up`. The REST server waits for healthy PostgreSQL and RabbitMQ containers, the worker for RabbitMQ (`depends_on` + `healthcheck`).
+All services run with `docker compose up`. The REST server waits for healthy PostgreSQL and RabbitMQ containers, the worker for RabbitMQ and RustFS (`depends_on` + `healthcheck`).
 
 ## 2. Document Upload Flow
 

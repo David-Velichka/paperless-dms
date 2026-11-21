@@ -18,9 +18,18 @@ repositories {
 	mavenCentral()
 }
 
+dependencyManagement {
+	imports {
+		mavenBom("software.amazon.awssdk:bom:2.59.1")
+	}
+}
+
 dependencies {
 	implementation("org.springframework.boot:spring-boot-starter-amqp")
 	implementation("org.springframework.boot:spring-boot-starter-jackson")
+	implementation("org.springframework.boot:spring-boot-starter-validation")
+	implementation("software.amazon.awssdk:s3")
+	implementation("net.sourceforge.tess4j:tess4j:5.21.0")
 
 	compileOnly("org.projectlombok:lombok")
 	annotationProcessor("org.projectlombok:lombok")

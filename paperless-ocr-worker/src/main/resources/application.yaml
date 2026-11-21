@@ -16,6 +16,19 @@ spring:
           initial-interval: 1s
           multiplier: 2
 
+paperless:
+  rabbitmq:
+    ocr-queue: paperless.ocr.queue
+  rustfs:
+    endpoint: ${RUSTFS_ENDPOINT:http://localhost:9000}
+    access-key: ${RUSTFS_ACCESS_KEY}
+    secret-key: ${RUSTFS_SECRET_KEY}
+    bucket: paperless-documents
+  ocr:
+    # Folder with the Tesseract language files (set in the Docker image)
+    tessdata-path: ${TESSDATA_PREFIX}
+    language: eng+deu
+
 logging:
   level:
     com.paperless.ocr: DEBUG

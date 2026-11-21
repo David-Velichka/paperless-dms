@@ -41,7 +41,11 @@ jobs:
           distribution: temurin
           java-version: "25"
       - uses: gradle/actions/setup-gradle@v4
+      # Tesseract and Ghostscript are needed by the real OCR test
+      - run: sudo apt-get update && sudo apt-get install -y --no-install-recommends tesseract-ocr tesseract-ocr-eng tesseract-ocr-deu ghostscript
       - run: ./gradlew check --no-daemon
+        env:
+          TESSDATA_PREFIX: /usr/share/tesseract-ocr/5/tessdata
 
   paperless-webui:
     name: Web UI build
