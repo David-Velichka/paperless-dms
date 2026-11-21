@@ -10,7 +10,10 @@ spring:
 
 paperless:
   rabbitmq:
+    exchange: paperless.document.exchange
     ocr-queue: paperless.ocr.queue
+    ocr-result-queue: paperless.ocr.result.queue
+    ocr-result-routing-key: document.ocr.result
   rustfs:
     endpoint: http://localhost:9000
     access-key: test-access-key

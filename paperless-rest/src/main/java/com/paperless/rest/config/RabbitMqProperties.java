@@ -5,7 +5,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.validation.annotation.Validated;
 
 /**
- * Names of the RabbitMQ exchange, queue and routing key (prefix paperless.rabbitmq).
+ * Names of the RabbitMQ exchange, queues and routing keys (prefix paperless.rabbitmq).
  * The application does not start if one of them is blank.
  */
 @ConfigurationProperties(prefix = "paperless.rabbitmq")
@@ -13,5 +13,7 @@ import org.springframework.validation.annotation.Validated;
 public record RabbitMqProperties(
         @NotBlank String exchange,
         @NotBlank String ocrQueue,
-        @NotBlank String ocrRoutingKey) {
+        @NotBlank String ocrRoutingKey,
+        @NotBlank String ocrResultQueue,
+        @NotBlank String ocrResultRoutingKey) {
 }

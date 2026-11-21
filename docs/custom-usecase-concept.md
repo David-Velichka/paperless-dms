@@ -1,7 +1,7 @@
 # Custom Use-Case Concept: Document State & Status History
 
 ## 1. Selected Use-Case
-- Choice: Recommendation 2 from course suggestions (Document state with history log).
+- Choice: Document state with history log.
 - Goal: Track lifecycle state of each document (e.g., received, processing, completed, rejected) with a full, immutable audit trail (what state changed, when, and why).
 
 ---

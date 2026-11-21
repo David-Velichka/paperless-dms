@@ -2,10 +2,13 @@ package com.paperless.ocr.service.impl;
 
 import com.paperless.ocr.exception.OcrException;
 import com.paperless.ocr.messaging.OcrMessage;
+import com.paperless.ocr.messaging.OcrResultMessage;
+import com.paperless.ocr.messaging.OcrResultStatus;
 import com.paperless.ocr.service.DocumentIndexer;
 import com.paperless.ocr.service.DocumentStorage;
 import com.paperless.ocr.service.OcrEngine;
 import com.paperless.ocr.service.OcrJobService;
+import com.paperless.ocr.service.OcrResultPublisher;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -23,9 +26,13 @@ public class OcrJobServiceImpl implements OcrJobService {
     private final DocumentStorage documentStorage;
     private final OcrEngine ocrEngine;
     private final DocumentIndexer documentIndexer;
+    private final OcrResultPublisher ocrResultPublisher;
 
     @Override
     public void process(OcrMessage message) {
+        // Sent again on a retry, the REST server ignores the repeated event
+        ocrResultPublisher.publish(new OcrResultMessage(message.documentId(), OcrResultStatus.STARTED, null));
+
         Path tempDir = createTempDir();
         try {
             Path pdf = documentStorage.download(message.storageKey(), tempDir);
@@ -33,6 +40,7 @@ public class OcrJobServiceImpl implements OcrJobService {
             String text = ocrEngine.extractText(pdf);
             // Indexing the same document again replaces the entry, so a redelivered job is harmless
             documentIndexer.index(message.documentId(), message.originalFilename(), text);
+            ocrResultPublisher.publish(new OcrResultMessage(message.documentId(), OcrResultStatus.COMPLETED, text));
             log.info("OCR job processed documentId={} textLength={}", message.documentId(), text.length());
         } finally {
             deleteTempDir(tempDir);

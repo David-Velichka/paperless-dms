@@ -21,7 +21,10 @@ spring:
 
 paperless:
   rabbitmq:
+    exchange: paperless.document.exchange
     ocr-queue: paperless.ocr.queue
+    ocr-result-queue: paperless.ocr.result.queue
+    ocr-result-routing-key: document.ocr.result
   rustfs:
     endpoint: ${RUSTFS_ENDPOINT:http://localhost:9000}
     access-key: ${RUSTFS_ACCESS_KEY}
@@ -34,4 +37,4 @@ paperless:
 
 logging:
   level:
-    com.paperless.ocr: DEBUG
+    com.paperless.ocr: INFO

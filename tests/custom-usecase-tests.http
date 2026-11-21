@@ -1,4 +1,4 @@
-### Paperless DMS - REST API Tests (Class 4: Custom Use-Case - Document Status & History)
+### Paperless DMS - REST API Tests (Custom Use-Case: Document Status & History)
 @baseUrl = http://localhost:8081/api/v1
 
 ### 1. Upload a document to start lifecycle (Initial status will be RECEIVED)

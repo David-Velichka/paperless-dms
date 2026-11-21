@@ -73,7 +73,7 @@ tasks.withType<Test> {
 	useJUnitPlatform()
 }
 
-// Coverage report (build/reports/jacoco) and >70% line coverage check required by the course
+// Coverage report (build/reports/jacoco) and >70% line coverage check
 tasks.test {
 	finalizedBy(tasks.jacocoTestReport)
 }

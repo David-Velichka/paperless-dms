@@ -16,4 +16,6 @@ public interface DocumentService {
     List<DocumentModel> search(String query);
     void deleteById(Long id);
     DocumentModel uploadDocument(DocumentModel documentModel, byte[] content);
+    void markOcrStarted(Long id);
+    void completeOcr(Long id, String ocrText);
 }

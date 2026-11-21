@@ -145,6 +145,50 @@ public class DocumentServiceImpl implements DocumentService {
         }
     }
 
+    // Only a RECEIVED document moves on, a repeated event (retry of the OCR job) is ignored.
+    // Statuses are checked before changing them: an exception from changeStatus would roll back the transaction.
+    @Override
+    @Transactional
+    public void markOcrStarted(Long id) {
+        Optional<DocumentModel> document = documentPersistenceService.findById(id);
+        if (document.isEmpty()) {
+            log.warn("Ignored OCR start for a missing document documentId={}", id);
+            return;
+        }
+        DocumentStatus status = document.get().getCurrentStatus();
+        if (status != DocumentStatus.RECEIVED) {
+            log.info("Ignored OCR start documentId={} status={}", id, status);
+            return;
+        }
+        documentStatusHistoryService.changeStatus(id, DocumentStatus.PROCESSING, "OCR started");
+    }
+
+    // The text is stored first: changeStatus loads and saves the document itself,
+    // saving the model loaded here after it would fail with an optimistic lock conflict.
+    @Override
+    @Transactional
+    public void completeOcr(Long id, String ocrText) {
+        Optional<DocumentModel> document = documentPersistenceService.findById(id);
+        if (document.isEmpty()) {
+            log.warn("Ignored OCR result for a missing document documentId={}", id);
+            return;
+        }
+        documentPersistenceService.save(document.get().toBuilder().ocrText(ocrText).build());
+        log.info("OCR text stored documentId={} textLength={}", id, ocrText == null ? 0 : ocrText.length());
+
+        DocumentStatus status = document.get().getCurrentStatus();
+        if (status == DocumentStatus.RECEIVED) {
+            // The STARTED event was missed or arrives later, so both steps are done here
+            documentStatusHistoryService.changeStatus(id, DocumentStatus.PROCESSING, "OCR started");
+            status = DocumentStatus.PROCESSING;
+        }
+        if (status == DocumentStatus.PROCESSING) {
+            documentStatusHistoryService.changeStatus(id, DocumentStatus.REVIEW_PENDING, "OCR completed");
+        } else {
+            log.info("Status kept after OCR documentId={} status={}", id, status);
+        }
+    }
+
     // Compensation for a failed upload: a failure here must not hide the original exception
     private void deleteStoredFileQuietly(String storageKey) {
         try {

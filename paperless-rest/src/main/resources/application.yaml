@@ -32,6 +32,14 @@ spring:
     password: ${SPRING_RABBITMQ_PASSWORD}
     # Fail fast when the broker is down (default is 60s), the upload then returns 503
     connection-timeout: 5s
+    # On an unexpected error retry 3 times (1s, 2s, 4s), then reject without requeue (no endless loop)
+    listener:
+      simple:
+        retry:
+          enabled: true
+          max-retries: 3
+          initial-interval: 1s
+          multiplier: 2
 
   flyway:
     enabled: false
@@ -41,6 +49,8 @@ paperless:
     exchange: paperless.document.exchange
     ocr-queue: paperless.ocr.queue
     ocr-routing-key: document.ocr
+    ocr-result-queue: paperless.ocr.result.queue
+    ocr-result-routing-key: document.ocr.result
   rustfs:
     endpoint: ${RUSTFS_ENDPOINT:http://localhost:9000}
     access-key: ${RUSTFS_ACCESS_KEY}
@@ -52,7 +62,8 @@ elasticsearch:
 
 logging:
   level:
-    com.paperless.rest: DEBUG
+    com.paperless.rest: INFO
     org.springframework.web: INFO
-    org.hibernate.SQL: DEBUG
-    org.hibernate.orm.jdbc.bind: TRACE
+    org.hibernate.SQL: INFO
+    # TRACE would log every bound SQL value, including the whole OCR text
+    org.hibernate.orm.jdbc.bind: INFO

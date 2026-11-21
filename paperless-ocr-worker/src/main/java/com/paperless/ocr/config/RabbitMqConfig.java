@@ -1,6 +1,9 @@
 package com.paperless.ocr.config;
 
 import org.springframework.amqp.AmqpRejectAndDontRequeueException;
+import org.springframework.amqp.core.Binding;
+import org.springframework.amqp.core.BindingBuilder;
+import org.springframework.amqp.core.DirectExchange;
 import org.springframework.amqp.core.Queue;
 import org.springframework.amqp.support.converter.JacksonJsonMessageConverter;
 import org.springframework.amqp.support.converter.MessageConverter;
@@ -19,6 +22,23 @@ public class RabbitMqConfig {
     @Bean
     public Queue ocrQueue(RabbitMqProperties properties) {
         return new Queue(properties.ocrQueue(), true);
+    }
+
+    // Exchange, result queue and binding are declared identically in paperless-rest, so either app can start first
+    @Bean
+    public DirectExchange documentExchange(RabbitMqProperties properties) {
+        return new DirectExchange(properties.exchange());
+    }
+
+    @Bean
+    public Queue ocrResultQueue(RabbitMqProperties properties) {
+        return new Queue(properties.ocrResultQueue(), true);
+    }
+
+    @Bean
+    public Binding ocrResultBinding(Queue ocrResultQueue, DirectExchange documentExchange,
+                                   RabbitMqProperties properties) {
+        return BindingBuilder.bind(ocrResultQueue).to(documentExchange).with(properties.ocrResultRoutingKey());
     }
 
     @Bean

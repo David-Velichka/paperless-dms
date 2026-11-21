@@ -4,9 +4,12 @@ import com.paperless.ocr.exception.DocumentNotFoundInStorageException;
 import com.paperless.ocr.exception.IndexingException;
 import com.paperless.ocr.exception.OcrException;
 import com.paperless.ocr.messaging.OcrMessage;
+import com.paperless.ocr.messaging.OcrResultMessage;
+import com.paperless.ocr.messaging.OcrResultStatus;
 import com.paperless.ocr.service.DocumentIndexer;
 import com.paperless.ocr.service.DocumentStorage;
 import com.paperless.ocr.service.OcrEngine;
+import com.paperless.ocr.service.OcrResultPublisher;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -25,6 +28,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.inOrder;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -44,29 +48,34 @@ class OcrJobServiceImplTest {
     @Mock
     private DocumentIndexer documentIndexer;
 
+    @Mock
+    private OcrResultPublisher ocrResultPublisher;
+
     @InjectMocks
     private OcrJobServiceImpl service;
 
     // GIVEN eine OCR-Nachricht mit Storage-Key
     // WHEN process aufgerufen wird
-    // THEN wird zuerst das PDF geladen, dann der Text erkannt und zuletzt im Index gespeichert
+    // THEN wird STARTED gemeldet, das PDF geladen, der Text erkannt, indexiert und zuletzt COMPLETED gemeldet
     @Test
-    void process_DownloadsPdfThenExtractsText() {
+    void process_ReportsStartedThenDownloadsOcrIndexesAndReportsCompleted() {
         Path pdf = Path.of("document.pdf");
         when(documentStorage.download(any(), any())).thenReturn(pdf);
         when(ocrEngine.extractText(pdf)).thenReturn("Hello");
 
         assertDoesNotThrow(() -> service.process(MESSAGE));
 
-        InOrder order = inOrder(documentStorage, ocrEngine, documentIndexer);
+        InOrder order = inOrder(ocrResultPublisher, documentStorage, ocrEngine, documentIndexer);
+        order.verify(ocrResultPublisher).publish(new OcrResultMessage(1L, OcrResultStatus.STARTED, null));
         order.verify(documentStorage).download(any(), any());
         order.verify(ocrEngine).extractText(pdf);
         order.verify(documentIndexer).index(1L, "invoice.pdf", "Hello");
+        order.verify(ocrResultPublisher).publish(new OcrResultMessage(1L, OcrResultStatus.COMPLETED, "Hello"));
     }
 
     // GIVEN der Index kann den Text nicht speichern
     // WHEN process aufgerufen wird
-    // THEN wird die Exception weitergegeben (der Job wird wiederholt) und das Temp-Verzeichnis gelöscht
+    // THEN wird die Exception weitergegeben (Job wird wiederholt), kein COMPLETED gesendet und das Temp-Verzeichnis gelöscht
     @Test
     void process_WhenIndexingFails_PropagatesAndDeletesTempDir() {
         Path pdf = Path.of("document.pdf");
@@ -75,6 +84,9 @@ class OcrJobServiceImplTest {
         doThrow(new IndexingException("failed", null)).when(documentIndexer).index(any(), any(), any());
 
         assertThrows(IndexingException.class, () -> service.process(MESSAGE));
+
+        verify(ocrResultPublisher, never())
+                .publish(new OcrResultMessage(1L, OcrResultStatus.COMPLETED, "Hello"));
 
         ArgumentCaptor<Path> dirCaptor = ArgumentCaptor.forClass(Path.class);
         verify(documentStorage).download(any(), dirCaptor.capture());

@@ -32,7 +32,7 @@ jobs:
           path: paperless-rest/build/reports/jacoco/test/html
 
   paperless-ocr-worker:
-    name: OCR worker tests
+    name: OCR worker tests and coverage
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -48,6 +48,7 @@ jobs:
           cache-provider: basic
       # Tesseract and Ghostscript are needed by the real OCR test
       - run: sudo apt-get update && sudo apt-get install -y --no-install-recommends tesseract-ocr tesseract-ocr-eng tesseract-ocr-deu ghostscript
+      # check = unit tests + JaCoCo report + 70% line coverage gate
       - run: ./gradlew check --no-daemon
         env:
           TESSDATA_PREFIX: /usr/share/tesseract-ocr/5/tessdata

@@ -23,6 +23,10 @@ spring:
   rabbitmq:
     host: localhost
     port: 5672
+    # No broker in tests: do not start the listener container
+    listener:
+      simple:
+        auto-startup: false
 
   flyway:
     enabled: false
@@ -32,6 +36,8 @@ paperless:
     exchange: paperless.document.exchange
     ocr-queue: paperless.ocr.queue
     ocr-routing-key: document.ocr
+    ocr-result-queue: paperless.ocr.result.queue
+    ocr-result-routing-key: document.ocr.result
   rustfs:
     endpoint: http://localhost:9000
     access-key: test-access-key

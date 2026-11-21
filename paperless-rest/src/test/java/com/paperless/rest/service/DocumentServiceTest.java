@@ -13,6 +13,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
+import org.mockito.InOrder;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -473,5 +474,104 @@ class DocumentServiceTest {
     void update_WithNullChanges_ThrowsBusinessLayerException() {
         assertThrows(BusinessLayerException.class, () -> documentService.update(1L, null));
         verify(documentPersistenceService, never()).save(any());
+    }
+
+    // GIVEN ein Dokument im Status RECEIVED
+    // WHEN markOcrStarted aufgerufen wird
+    // THEN wechselt der Status mit Kommentar auf PROCESSING
+    @Test
+    void markOcrStarted_FromReceived_ChangesToProcessing() {
+        when(documentPersistenceService.findById(1L)).thenReturn(Optional.of(sampleModel));
+
+        documentService.markOcrStarted(1L);
+
+        verify(documentStatusHistoryService).changeStatus(1L, DocumentStatus.PROCESSING, "OCR started");
+    }
+
+    // GIVEN ein Dokument, das bereits im Status PROCESSING ist (wiederholtes STARTED-Event)
+    // WHEN markOcrStarted aufgerufen wird
+    // THEN wird das Event ignoriert und der Status nicht geändert
+    @Test
+    void markOcrStarted_WhenAlreadyProcessing_IgnoresDuplicate() {
+        DocumentModel processing = sampleModel.toBuilder().currentStatus(DocumentStatus.PROCESSING).build();
+        when(documentPersistenceService.findById(1L)).thenReturn(Optional.of(processing));
+
+        assertDoesNotThrow(() -> documentService.markOcrStarted(1L));
+
+        verifyNoInteractions(documentStatusHistoryService);
+    }
+
+    // GIVEN ein Dokument, das inzwischen gelöscht wurde
+    // WHEN markOcrStarted aufgerufen wird
+    // THEN wird das Event ohne Exception ignoriert
+    @Test
+    void markOcrStarted_WhenDocumentMissing_IgnoresEvent() {
+        when(documentPersistenceService.findById(99L)).thenReturn(Optional.empty());
+
+        assertDoesNotThrow(() -> documentService.markOcrStarted(99L));
+
+        verifyNoInteractions(documentStatusHistoryService);
+    }
+
+    // GIVEN ein Dokument im Status PROCESSING
+    // WHEN completeOcr mit dem erkannten Text aufgerufen wird
+    // THEN wird zuerst der Text gespeichert und danach der Status auf REVIEW_PENDING gesetzt
+    @Test
+    void completeOcr_FromProcessing_StoresTextThenChangesToReviewPending() {
+        DocumentModel processing = sampleModel.toBuilder().currentStatus(DocumentStatus.PROCESSING).build();
+        when(documentPersistenceService.findById(1L)).thenReturn(Optional.of(processing));
+
+        documentService.completeOcr(1L, "Hello World");
+
+        ArgumentCaptor<DocumentModel> captor = ArgumentCaptor.forClass(DocumentModel.class);
+        InOrder order = inOrder(documentPersistenceService, documentStatusHistoryService);
+        order.verify(documentPersistenceService).save(captor.capture());
+        order.verify(documentStatusHistoryService).changeStatus(1L, DocumentStatus.REVIEW_PENDING, "OCR completed");
+        assertEquals("Hello World", captor.getValue().getOcrText());
+        verify(documentStatusHistoryService, never()).changeStatus(1L, DocumentStatus.PROCESSING, "OCR started");
+    }
+
+    // GIVEN ein Dokument im Status RECEIVED (STARTED-Event fehlt oder kommt später)
+    // WHEN completeOcr aufgerufen wird
+    // THEN werden beide Schritte PROCESSING und REVIEW_PENDING nacheinander durchgeführt
+    @Test
+    void completeOcr_FromReceived_WalksBothSteps() {
+        when(documentPersistenceService.findById(1L)).thenReturn(Optional.of(sampleModel));
+
+        documentService.completeOcr(1L, "Hello World");
+
+        InOrder order = inOrder(documentStatusHistoryService);
+        order.verify(documentStatusHistoryService).changeStatus(1L, DocumentStatus.PROCESSING, "OCR started");
+        order.verify(documentStatusHistoryService).changeStatus(1L, DocumentStatus.REVIEW_PENDING, "OCR completed");
+    }
+
+    // GIVEN ein bereits abgelehntes Dokument (REJECTED)
+    // WHEN completeOcr aufgerufen wird
+    // THEN wird der Text gespeichert und der Status bleibt unverändert
+    @Test
+    void completeOcr_ForRejectedDocument_StoresTextAndKeepsStatus() {
+        DocumentModel rejected = sampleModel.toBuilder().currentStatus(DocumentStatus.REJECTED).build();
+        when(documentPersistenceService.findById(1L)).thenReturn(Optional.of(rejected));
+
+        assertDoesNotThrow(() -> documentService.completeOcr(1L, "Hello World"));
+
+        ArgumentCaptor<DocumentModel> captor = ArgumentCaptor.forClass(DocumentModel.class);
+        verify(documentPersistenceService).save(captor.capture());
+        assertEquals("Hello World", captor.getValue().getOcrText());
+        assertEquals(DocumentStatus.REJECTED, captor.getValue().getCurrentStatus());
+        verifyNoInteractions(documentStatusHistoryService);
+    }
+
+    // GIVEN ein Dokument, das inzwischen gelöscht wurde
+    // WHEN completeOcr aufgerufen wird
+    // THEN wird das Ergebnis ohne Exception ignoriert und nichts gespeichert
+    @Test
+    void completeOcr_WhenDocumentMissing_IgnoresResult() {
+        when(documentPersistenceService.findById(99L)).thenReturn(Optional.empty());
+
+        assertDoesNotThrow(() -> documentService.completeOcr(99L, "Hello World"));
+
+        verify(documentPersistenceService, never()).save(any());
+        verifyNoInteractions(documentStatusHistoryService);
     }
 }

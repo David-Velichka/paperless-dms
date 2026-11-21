@@ -45,7 +45,22 @@ tasks.withType<Test> {
 	useJUnitPlatform()
 }
 
-// Coverage report (build/reports/jacoco)
+// Coverage report (build/reports/jacoco) and >70% line coverage check
 tasks.test {
 	finalizedBy(tasks.jacocoTestReport)
+}
+
+tasks.jacocoTestCoverageVerification {
+	violationRules {
+		rule {
+			limit {
+				counter = "LINE"
+				minimum = "0.70".toBigDecimal()
+			}
+		}
+	}
+}
+
+tasks.check {
+	dependsOn(tasks.jacocoTestCoverageVerification)
 }
