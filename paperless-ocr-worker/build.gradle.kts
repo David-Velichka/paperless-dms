@@ -27,6 +27,7 @@ dependencyManagement {
 dependencies {
 	implementation("org.springframework.boot:spring-boot-starter-rabbitmq")
 	implementation("org.springframework.boot:spring-boot-starter-jackson")
+	implementation("org.springframework.boot:spring-boot-starter-data-elasticsearch")
 	implementation("org.springframework.boot:spring-boot-starter-validation")
 	implementation("software.amazon.awssdk:s3")
 	implementation("net.sourceforge.tess4j:tess4j:5.21.0")

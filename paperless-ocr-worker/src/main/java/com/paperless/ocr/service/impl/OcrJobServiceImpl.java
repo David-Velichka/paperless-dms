@@ -2,6 +2,7 @@ package com.paperless.ocr.service.impl;
 
 import com.paperless.ocr.exception.OcrException;
 import com.paperless.ocr.messaging.OcrMessage;
+import com.paperless.ocr.service.DocumentIndexer;
 import com.paperless.ocr.service.DocumentStorage;
 import com.paperless.ocr.service.OcrEngine;
 import com.paperless.ocr.service.OcrJobService;
@@ -21,6 +22,7 @@ public class OcrJobServiceImpl implements OcrJobService {
 
     private final DocumentStorage documentStorage;
     private final OcrEngine ocrEngine;
+    private final DocumentIndexer documentIndexer;
 
     @Override
     public void process(OcrMessage message) {
@@ -29,6 +31,8 @@ public class OcrJobServiceImpl implements OcrJobService {
             Path pdf = documentStorage.download(message.storageKey(), tempDir);
             // An empty text is a valid result (for example a blank page)
             String text = ocrEngine.extractText(pdf);
+            // Indexing the same document again replaces the entry, so a redelivered job is harmless
+            documentIndexer.index(message.documentId(), message.originalFilename(), text);
             log.info("OCR job processed documentId={} textLength={}", message.documentId(), text.length());
         } finally {
             deleteTempDir(tempDir);

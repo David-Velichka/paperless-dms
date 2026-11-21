@@ -1,8 +1,10 @@
 package com.paperless.ocr.service.impl;
 
 import com.paperless.ocr.exception.DocumentNotFoundInStorageException;
+import com.paperless.ocr.exception.IndexingException;
 import com.paperless.ocr.exception.OcrException;
 import com.paperless.ocr.messaging.OcrMessage;
+import com.paperless.ocr.service.DocumentIndexer;
 import com.paperless.ocr.service.DocumentStorage;
 import com.paperless.ocr.service.OcrEngine;
 import org.junit.jupiter.api.Test;
@@ -21,6 +23,7 @@ import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -38,12 +41,15 @@ class OcrJobServiceImplTest {
     @Mock
     private OcrEngine ocrEngine;
 
+    @Mock
+    private DocumentIndexer documentIndexer;
+
     @InjectMocks
     private OcrJobServiceImpl service;
 
     // GIVEN eine OCR-Nachricht mit Storage-Key
     // WHEN process aufgerufen wird
-    // THEN wird zuerst das PDF geladen und danach der Text erkannt
+    // THEN wird zuerst das PDF geladen, dann der Text erkannt und zuletzt im Index gespeichert
     @Test
     void process_DownloadsPdfThenExtractsText() {
         Path pdf = Path.of("document.pdf");
@@ -52,9 +58,27 @@ class OcrJobServiceImplTest {
 
         assertDoesNotThrow(() -> service.process(MESSAGE));
 
-        InOrder order = inOrder(documentStorage, ocrEngine);
+        InOrder order = inOrder(documentStorage, ocrEngine, documentIndexer);
         order.verify(documentStorage).download(any(), any());
         order.verify(ocrEngine).extractText(pdf);
+        order.verify(documentIndexer).index(1L, "invoice.pdf", "Hello");
+    }
+
+    // GIVEN der Index kann den Text nicht speichern
+    // WHEN process aufgerufen wird
+    // THEN wird die Exception weitergegeben (der Job wird wiederholt) und das Temp-Verzeichnis gelöscht
+    @Test
+    void process_WhenIndexingFails_PropagatesAndDeletesTempDir() {
+        Path pdf = Path.of("document.pdf");
+        when(documentStorage.download(any(), any())).thenReturn(pdf);
+        when(ocrEngine.extractText(pdf)).thenReturn("Hello");
+        doThrow(new IndexingException("failed", null)).when(documentIndexer).index(any(), any(), any());
+
+        assertThrows(IndexingException.class, () -> service.process(MESSAGE));
+
+        ArgumentCaptor<Path> dirCaptor = ArgumentCaptor.forClass(Path.class);
+        verify(documentStorage).download(any(), dirCaptor.capture());
+        assertFalse(Files.exists(dirCaptor.getValue()));
     }
 
     // GIVEN die Texterkennung liefert einen leeren Text
@@ -67,6 +91,7 @@ class OcrJobServiceImplTest {
         when(ocrEngine.extractText(pdf)).thenReturn("");
 
         assertDoesNotThrow(() -> service.process(MESSAGE));
+        verify(documentIndexer).index(1L, "invoice.pdf", "");
     }
 
     // GIVEN die Texterkennung schlägt fehl
@@ -80,6 +105,7 @@ class OcrJobServiceImplTest {
 
         assertThrows(OcrException.class, () -> service.process(MESSAGE));
 
+        verifyNoInteractions(documentIndexer);
         ArgumentCaptor<Path> dirCaptor = ArgumentCaptor.forClass(Path.class);
         verify(documentStorage).download(any(), dirCaptor.capture());
         assertFalse(Files.exists(dirCaptor.getValue()));
@@ -95,7 +121,7 @@ class OcrJobServiceImplTest {
 
         assertThrows(DocumentNotFoundInStorageException.class, () -> service.process(MESSAGE));
 
-        verifyNoInteractions(ocrEngine);
+        verifyNoInteractions(ocrEngine, documentIndexer);
         ArgumentCaptor<Path> dirCaptor = ArgumentCaptor.forClass(Path.class);
         verify(documentStorage).download(any(), dirCaptor.capture());
         assertFalse(Files.exists(dirCaptor.getValue()));
