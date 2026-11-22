@@ -202,6 +202,46 @@ export const DetailModal: React.FC<DetailModalProps> = ({
             </div>
           </div>
 
+          {/* Recognized text from the OCR worker (read-only) */}
+          <div id="ocr-text-container" style={{ marginBottom: '1.5rem' }}>
+            <h3
+              style={{
+                fontSize: '0.9375rem',
+                fontWeight: 600,
+                marginBottom: '0.5rem',
+                color: 'var(--text-primary)'
+              }}
+            >
+              Recognized Text (OCR)
+            </h3>
+            {document.ocrText ? (
+              <div
+                id="detail-ocr-text"
+                style={{
+                  whiteSpace: 'pre-wrap',
+                  maxHeight: '200px',
+                  overflow: 'auto',
+                  fontSize: '0.8125rem',
+                  background: 'rgba(255, 255, 255, 0.02)',
+                  padding: '0.75rem',
+                  borderRadius: 'var(--radius-md)',
+                  border: '1px solid var(--border-subtle)'
+                }}
+              >
+                {document.ocrText}
+              </div>
+            ) : (
+              <div
+                id="detail-ocr-hint"
+                style={{ color: 'var(--text-muted)', fontSize: '0.8125rem' }}
+              >
+                {docStatus === 'RECEIVED' || docStatus === 'PROCESSING'
+                  ? 'Text recognition is still running...'
+                  : 'No text recognized.'}
+              </div>
+            )}
+          </div>
+
           {/* Status Transition Section (Custom Use Case 4) */}
           {nextStates.length > 0 && (
             <div id="transition-container" style={{ marginBottom: '1.5rem' }}>

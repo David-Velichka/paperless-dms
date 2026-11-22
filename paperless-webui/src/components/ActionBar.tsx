@@ -49,7 +49,7 @@ export const ActionBar: React.FC<ActionBarProps> = ({
             type="text"
             id="search-input"
             className="search-input"
-            placeholder="Search documents by title..."
+            placeholder="Search documents by title or content..."
             value={searchValue}
             onChange={(e) => setSearchValue(e.target.value)}
           />

@@ -99,4 +99,19 @@ class DocumentDtoMapperTest {
         assertEquals(1, responseList.size());
         assertEquals(5L, responseList.get(0).getId());
     }
+
+    // GIVEN ein DocumentModel mit OCR-Text
+    // WHEN toResponseDtoList und toResponseDto aufgerufen werden
+    // THEN fehlt der OCR-Text nur in der Liste, das einzelne Dokument enthält ihn
+    @Test
+    void toResponseDtoList_LeavesOutOcrText() {
+        DocumentModel model = DocumentModel.builder().id(6L).title("OCR Doc").ocrText("Hello World").build();
+
+        List<DocumentResponseDto> responseList = mapper.toResponseDtoList(List.of(model));
+        DocumentResponseDto single = mapper.toResponseDto(model);
+
+        assertEquals("OCR Doc", responseList.get(0).getTitle());
+        assertNull(responseList.get(0).getOcrText());
+        assertEquals("Hello World", single.getOcrText());
+    }
 }

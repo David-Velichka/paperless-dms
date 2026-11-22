@@ -99,21 +99,6 @@ export const API = {
     throw new Error(errorMessage);
   },
 
-  async getDocumentStatus(id: number): Promise<{ status: DocumentStatus }> {
-    const res = await fetch(`${this.BASE_URL}/documents/${id}/status`, {
-      method: 'GET',
-      headers: {
-        Accept: 'application/json'
-      }
-    });
-
-    if (!res.ok) {
-      const errorMessage = await this.parseError(res, 'Failed to fetch status');
-      throw new Error(errorMessage);
-    }
-    return res.json();
-  },
-
   async updateDocumentStatus(
     id: number,
     targetStatus: DocumentStatus,

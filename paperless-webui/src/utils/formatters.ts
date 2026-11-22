@@ -1,9 +1,9 @@
 import { DocumentItem, DocumentStatus } from '../types';
 
 export const STATUS_TRANSITIONS: Record<DocumentStatus, DocumentStatus[]> = {
-  RECEIVED: ['PROCESSING'],
-  PROCESSING: ['REVIEW_PENDING'],
-  REVIEW_PENDING: ['COMPLETED', 'REJECTED'],
+  RECEIVED: ['PROCESSING', 'REJECTED'],
+  PROCESSING: ['REVIEW_PENDING', 'REJECTED'],
+  REVIEW_PENDING: ['COMPLETED', 'REJECTED', 'PROCESSING'],
   COMPLETED: [],
   REJECTED: []
 };
@@ -24,6 +24,6 @@ export function formatDate(isoString: string | null | undefined): string {
 }
 
 export function getDocStatus(doc: DocumentItem): DocumentStatus {
-  return doc.currentStatus || doc.status || 'RECEIVED';
+  return doc.currentStatus || 'RECEIVED';
 }
 

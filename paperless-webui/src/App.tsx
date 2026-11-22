@@ -1,6 +1,7 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { DocumentItem, DocumentStatus, DocumentStatusHistory, ToastMessage } from './types';
 import { API } from './services/api';
+import { getDocStatus } from './utils/formatters';
 import { Header } from './components/Header';
 import { StatsGrid } from './components/StatsGrid';
 import { ActionBar } from './components/ActionBar';
@@ -35,18 +36,42 @@ export const App: React.FC = () => {
     }, 4000);
   }, []);
 
-  const loadDocuments = useCallback(async (query: string = '') => {
+  // Latest search term, used to drop responses of older requests
+  const latestQuery = useRef<string>('');
+
+  const loadDocuments = useCallback(async (query: string = '', silent: boolean = false) => {
+    latestQuery.current = query;
     const online = await API.checkHealth();
     setIsOnline(online);
 
     try {
       const docs = await API.getDocuments(query);
-      setDocuments(docs);
+      if (query === latestQuery.current) {
+        setDocuments(docs);
+      }
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Failed to fetch documents';
-      addToast(msg, 'error');
+      if (!silent) {
+        const msg = err instanceof Error ? err.message : 'Failed to fetch documents';
+        addToast(msg, 'error');
+      }
     }
   }, [addToast]);
+
+  // Reload the list every 5 seconds while OCR is still running for a listed document
+  const isOcrRunning = documents.some((doc) => {
+    const status = getDocStatus(doc);
+    return status === 'RECEIVED' || status === 'PROCESSING';
+  });
+  const isModalOpen = isUploadOpen || selectedDoc !== null || docToDelete !== null;
+
+  useEffect(() => {
+    if (!isOcrRunning || isModalOpen) return;
+
+    const timer = setInterval(() => {
+      loadDocuments(searchQuery, true);
+    }, 5000);
+    return () => clearInterval(timer);
+  }, [isOcrRunning, isModalOpen, searchQuery, loadDocuments]);
 
   // Debounce search query changes
   useEffect(() => {
@@ -80,7 +105,7 @@ export const App: React.FC = () => {
 
     try {
       const uploaded = await API.uploadDocument(file, title);
-      addToast(`Document "${uploaded.title || uploaded.originalFilename}" uploaded successfully!`);
+      addToast(`Document "${uploaded.title || uploaded.originalFilename}" uploaded successfully! Text recognition is running, the content is searchable in a few seconds.`);
       await loadDocuments(searchQuery);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Failed to upload document';
