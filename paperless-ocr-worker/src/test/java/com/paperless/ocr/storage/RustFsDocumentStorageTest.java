@@ -16,6 +16,7 @@ import software.amazon.awssdk.services.s3.model.GetObjectRequest;
 import software.amazon.awssdk.services.s3.model.NoSuchKeyException;
 
 import java.nio.file.Path;
+import java.time.Duration;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
@@ -28,7 +29,8 @@ import static org.mockito.Mockito.verify;
 class RustFsDocumentStorageTest {
 
     private static final RustFsProperties PROPERTIES =
-            new RustFsProperties("http://rustfs:9000", "access", "secret", "test-bucket");
+            new RustFsProperties("http://rustfs:9000", "access", "secret", "test-bucket",
+                    Duration.ofSeconds(120), Duration.ofSeconds(30));
 
     @Mock
     private S3Client s3Client;

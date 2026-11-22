@@ -25,7 +25,8 @@ import static org.mockito.Mockito.verify;
 class OcrMessageProducerTest {
 
     private static final RabbitMqProperties PROPERTIES =
-            new RabbitMqProperties("test.exchange", "test.queue", "test.routing", "test.result.queue", "test.result");
+            new RabbitMqProperties("test.exchange", "test.queue", "test.routing", "test.result.queue", "test.result",
+                    "test.dlx", "test.dlq", "test.dead");
 
     @Mock
     private RabbitTemplate rabbitTemplate;

@@ -82,6 +82,8 @@ docker compose ps
 ```
 All containers should report `running` (postgres, rabbitmq, rustfs and elasticsearch `healthy`).
 
+**Existing RabbitMQ volume:** `paperless.ocr.queue` is declared with a dead-letter exchange (`paperless.dlx`, failed jobs land in `paperless.ocr.dlq`). A broker that still holds the old queue without these arguments refuses the new declaration with `PRECONDITION_FAILED`, and `paperless-rest` and `paperless-ocr-worker` do not start. Delete `paperless.ocr.queue` once in the RabbitMQ Management UI (Queues and Streams, Delete) or run `docker compose down -v`. Fresh clones are not affected.
+
 ### Step 4: Stop Services
 ```bash
 docker compose down

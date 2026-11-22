@@ -141,21 +141,6 @@ class GlobalExceptionHandlerTest {
         assertEquals(URI.create("urn:paperless:problem:storage-unavailable"), problem.getType());
     }
 
-    // GIVEN eine SearchException, weil Elasticsearch nicht erreichbar ist
-    // WHEN die handleSearchException-Methode aufgerufen wird
-    // THEN wird ein RFC 7807 ProblemDetail mit HTTP-Status 503 ohne interne Details zurückgegeben
-    @Test
-    void handleSearchException_ReturnsProblemDetail503() {
-        SearchException ex = new SearchException("Search index could not be queried", new RuntimeException("secret"));
-
-        ProblemDetail problem = handler.handleSearchException(ex);
-
-        assertEquals(HttpStatus.SERVICE_UNAVAILABLE.value(), problem.getStatus());
-        assertEquals("Search Unavailable", problem.getTitle());
-        assertEquals("The search is currently not available. Please try again later.", problem.getDetail());
-        assertEquals(URI.create("urn:paperless:problem:search-unavailable"), problem.getType());
-    }
-
     // GIVEN eine OptimisticLockException bei nebenläufiger Bearbeitung
     // WHEN die handleOptimisticLock-Methode aufgerufen wird
     // THEN wird ein RFC 7807 ProblemDetail mit HTTP-Status 409 zurückgegeben

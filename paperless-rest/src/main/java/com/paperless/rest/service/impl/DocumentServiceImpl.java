@@ -11,10 +11,13 @@ import com.paperless.rest.service.OcrJobPublisher;
 import com.paperless.rest.service.model.DocumentModel;
 import com.paperless.rest.service.model.DocumentStatus;
 import com.paperless.rest.service.validation.DocumentModelValidator;
+import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -84,7 +87,9 @@ public class DocumentServiceImpl implements DocumentService {
 
     // Elasticsearch finds the OCR text and the file name, the database the title.
     // Documents are always loaded from the database, so a deleted document never shows up.
+    // If Elasticsearch fails, the circuit breaker falls back to the title search.
     @Override
+    @CircuitBreaker(name = "search", fallbackMethod = "searchByTitleOnly")
     public List<DocumentModel> search(String query) {
         log.info("Searching documents query='{}'", query);
         if (query == null || query.isBlank()) {
@@ -108,6 +113,13 @@ public class DocumentServiceImpl implements DocumentService {
             results.putIfAbsent(document.getId(), document);
         }
         return new ArrayList<>(results.values());
+    }
+
+    // Fallback of the search circuit breaker: degraded search on the title only
+    private List<DocumentModel> searchByTitleOnly(String query, Throwable cause) {
+        log.warn("Search index unavailable, falling back to title search query='{}' reason={}",
+                query, cause.toString());
+        return documentPersistenceService.searchByTitle(query);
     }
 
     // One transaction: the status history is only deleted together with the document.
@@ -142,7 +154,7 @@ public class DocumentServiceImpl implements DocumentService {
     }
 
     // S3 has no transactions: the file is stored first, then metadata, history and OCR message are saved in one
-    // database transaction. If one of these steps fails, the file is deleted again.
+    // database transaction. A rollback callback on that transaction deletes the file again, also when the commit fails.
     @Override
     @Transactional
     public DocumentModel uploadDocument(DocumentModel documentModel, byte[] content) {
@@ -158,23 +170,26 @@ public class DocumentServiceImpl implements DocumentService {
 
         String storageKey = UUID.randomUUID() + ".pdf";
         documentStorage.store(storageKey, content, documentModel.getContentType());
-
-        try {
-            DocumentModel toSave = documentModel.toBuilder().storagePath(storageKey).build();
-            if (toSave.getCurrentStatus() == null) {
-                toSave = toSave.toBuilder().currentStatus(DocumentStatus.RECEIVED).build();
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCompletion(int status) {
+                if (status == STATUS_ROLLED_BACK) {
+                    deleteStoredFileQuietly(storageKey);
+                }
             }
-            DocumentModel saved = documentPersistenceService.save(toSave);
+        });
 
-            documentStatusHistoryService.createInitialHistory(saved.getId(), "Document file uploaded");
-
-            ocrJobPublisher.sendOcrMessage(saved);
-
-            return saved;
-        } catch (RuntimeException ex) {
-            deleteStoredFileQuietly(storageKey);
-            throw ex;
+        DocumentModel toSave = documentModel.toBuilder().storagePath(storageKey).build();
+        if (toSave.getCurrentStatus() == null) {
+            toSave = toSave.toBuilder().currentStatus(DocumentStatus.RECEIVED).build();
         }
+        DocumentModel saved = documentPersistenceService.save(toSave);
+
+        documentStatusHistoryService.createInitialHistory(saved.getId(), "Document file uploaded");
+
+        ocrJobPublisher.sendOcrMessage(saved);
+
+        return saved;
     }
 
     // Only a RECEIVED document moves on, a repeated event (retry of the OCR job) is ignored.
@@ -221,10 +236,11 @@ public class DocumentServiceImpl implements DocumentService {
         }
     }
 
-    // Compensation for a failed upload: a failure here must not hide the original exception
+    // Compensation for a rolled back upload, best effort: a failing delete only leaves an orphan file
     private void deleteStoredFileQuietly(String storageKey) {
         try {
             documentStorage.delete(storageKey);
+            log.info("Stored file deleted after rolled back upload key={}", storageKey);
         } catch (RuntimeException ex) {
             log.warn("Orphan file could not be deleted after failed upload key={}", storageKey, ex);
         }

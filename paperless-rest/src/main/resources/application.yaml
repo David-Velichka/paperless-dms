@@ -43,6 +43,9 @@ spring:
 
   elasticsearch:
     uris: ${SPRING_ELASTICSEARCH_URIS:http://localhost:9200}
+    # Explicit timeouts: a down or hanging Elasticsearch fails fast instead of blocking the caller
+    connection-timeout: 2s
+    socket-timeout: 5s
 
   flyway:
     enabled: false
@@ -54,11 +57,27 @@ paperless:
     ocr-routing-key: document.ocr
     ocr-result-queue: paperless.ocr.result.queue
     ocr-result-routing-key: document.ocr.result
+    dead-letter-exchange: paperless.dlx
+    ocr-dead-letter-queue: paperless.ocr.dlq
+    ocr-dead-letter-routing-key: document.ocr.dead
   rustfs:
     endpoint: ${RUSTFS_ENDPOINT:http://localhost:9000}
     access-key: ${RUSTFS_ACCESS_KEY}
     secret-key: ${RUSTFS_SECRET_KEY}
     bucket: paperless-documents
+    # Whole call including the SDK retries (enough for a 50 MB upload) and one single attempt
+    api-call-timeout: 120s
+    api-call-attempt-timeout: 30s
+
+resilience4j:
+  circuitbreaker:
+    instances:
+      # Opens when 50% of the last 10 searches failed (at least 5 calls), then skips Elasticsearch for 10s
+      search:
+        sliding-window-size: 10
+        minimum-number-of-calls: 5
+        failure-rate-threshold: 50
+        wait-duration-in-open-state: 10s
 
 logging:
   level:

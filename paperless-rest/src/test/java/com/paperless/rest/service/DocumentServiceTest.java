@@ -10,6 +10,7 @@ import com.paperless.rest.service.impl.DocumentServiceImpl;
 import com.paperless.rest.service.model.DocumentModel;
 import com.paperless.rest.service.model.DocumentStatus;
 import com.paperless.rest.service.validation.DocumentModelValidator;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -18,6 +19,8 @@ import org.mockito.InOrder;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.util.List;
 import java.util.Optional;
@@ -58,6 +61,20 @@ class DocumentServiceTest {
                 .title("Test Invoice")
                 .currentStatus(DocumentStatus.RECEIVED)
                 .build();
+        // No Spring transaction in unit tests: allow the upload to register its rollback callback
+        TransactionSynchronizationManager.initSynchronization();
+    }
+
+    @AfterEach
+    void tearDown() {
+        TransactionSynchronizationManager.clearSynchronization();
+    }
+
+    // Simulates the end of the upload transaction with the given status
+    private void completeTransaction(int status) {
+        for (TransactionSynchronization synchronization : TransactionSynchronizationManager.getSynchronizations()) {
+            synchronization.afterCompletion(status);
+        }
     }
 
     // GIVEN ein gültiges DocumentModel
@@ -437,29 +454,49 @@ class DocumentServiceTest {
         verify(documentStatusHistoryService, never()).createInitialHistory(any(), any());
         verify(ocrJobPublisher, never()).sendOcrMessage(any());
         verify(documentStorage, never()).delete(any());
+        assertTrue(TransactionSynchronizationManager.getSynchronizations().isEmpty());
     }
 
     // GIVEN ein gespeicherter Blob, aber das Speichern der Metadaten schlägt fehl
-    // WHEN uploadDocument aufgerufen wird
-    // THEN wird der Blob wieder gelöscht und die ursprüngliche Exception weitergegeben
+    // WHEN die Transaktion danach zurückgerollt wird
+    // THEN löscht der registrierte Rollback-Callback den Blob wieder
     @Test
-    void uploadDocument_WhenSaveFails_DeletesStoredFile() {
+    void uploadDocument_WhenSaveFailsAndRolledBack_DeletesStoredFile() {
         DocumentModel inputModel = DocumentModel.builder().title("Upload Test").originalFilename("test.pdf").build();
         when(documentPersistenceService.save(any(DocumentModel.class))).thenThrow(new IllegalStateException("db down"));
 
         assertThrows(IllegalStateException.class,
                 () -> documentService.uploadDocument(inputModel, "content".getBytes()));
+        assertEquals(1, TransactionSynchronizationManager.getSynchronizations().size());
+        verify(documentStorage, never()).delete(any());
+
+        completeTransaction(TransactionSynchronization.STATUS_ROLLED_BACK);
 
         ArgumentCaptor<String> storedKey = ArgumentCaptor.forClass(String.class);
         verify(documentStorage).store(storedKey.capture(), any(byte[].class), any());
         verify(documentStorage).delete(storedKey.getValue());
     }
 
-    // GIVEN ein gespeicherter Blob, aber das Löschen beim Kompensieren schlägt ebenfalls fehl
-    // WHEN uploadDocument aufgerufen wird
-    // THEN wird trotzdem die ursprüngliche Exception weitergegeben
+    // GIVEN ein erfolgreicher Upload
+    // WHEN die Transaktion committed wird
+    // THEN bleibt der Blob im Object Storage erhalten
     @Test
-    void uploadDocument_WhenCompensationFails_StillThrowsOriginalException() {
+    void uploadDocument_WhenCommitted_KeepsStoredFile() {
+        DocumentModel inputModel = DocumentModel.builder().title("Upload Test").originalFilename("test.pdf").build();
+        when(documentPersistenceService.save(any(DocumentModel.class)))
+                .thenAnswer(invocation -> ((DocumentModel) invocation.getArgument(0)).toBuilder().id(10L).build());
+
+        documentService.uploadDocument(inputModel, "content".getBytes());
+        completeTransaction(TransactionSynchronization.STATUS_COMMITTED);
+
+        verify(documentStorage, never()).delete(any());
+    }
+
+    // GIVEN ein zurückgerollter Upload, aber das Löschen beim Kompensieren schlägt ebenfalls fehl
+    // WHEN der Rollback-Callback ausgeführt wird
+    // THEN wird keine weitere Exception geworfen
+    @Test
+    void uploadDocument_WhenCompensationFails_DoesNotThrow() {
         DocumentModel inputModel = DocumentModel.builder().title("Upload Test").originalFilename("test.pdf").build();
         when(documentPersistenceService.save(any(DocumentModel.class))).thenThrow(new IllegalStateException("db down"));
         doThrow(new StorageException("Document file could not be deleted", new RuntimeException("down")))
@@ -469,11 +506,13 @@ class DocumentServiceTest {
                 () -> documentService.uploadDocument(inputModel, "content".getBytes()));
 
         assertEquals("db down", ex.getMessage());
+        assertDoesNotThrow(() -> completeTransaction(TransactionSynchronization.STATUS_ROLLED_BACK));
+        verify(documentStorage).delete(anyString());
     }
 
     // GIVEN ein gültiges Dokument, aber RabbitMQ ist nicht erreichbar
-    // WHEN uploadDocument aufgerufen wird
-    // THEN wird die MessageQueueException weitergegeben, damit die Transaktion zurückgerollt wird
+    // WHEN uploadDocument aufgerufen wird und die Transaktion zurückgerollt wird
+    // THEN wird die MessageQueueException weitergegeben und der Blob wieder gelöscht
     @Test
     void uploadDocument_WhenQueueUnavailable_ThrowsMessageQueueException() {
         DocumentModel inputModel = DocumentModel.builder().title("Upload Test").originalFilename("test.pdf").build();
@@ -485,7 +524,8 @@ class DocumentServiceTest {
 
         assertThrows(MessageQueueException.class,
                 () -> documentService.uploadDocument(inputModel, "content".getBytes()));
-        // Compensation: the file stored before is removed again
+        // Compensation: the rollback removes the file stored before
+        completeTransaction(TransactionSynchronization.STATUS_ROLLED_BACK);
         ArgumentCaptor<String> storedKey = ArgumentCaptor.forClass(String.class);
         verify(documentStorage).store(storedKey.capture(), any(byte[].class), any());
         verify(documentStorage).delete(storedKey.getValue());

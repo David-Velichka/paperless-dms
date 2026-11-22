@@ -37,6 +37,9 @@ dependencies {
 	implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:3.2.1")
 	implementation("org.flywaydb:flyway-database-postgresql")
 	implementation("software.amazon.awssdk:s3")
+	// Circuit breaker annotations need AspectJ on the classpath
+	implementation("io.github.resilience4j:resilience4j-spring-boot4:2.4.0")
+	implementation("org.springframework.boot:spring-boot-starter-aspectj")
 	developmentOnly("org.springframework.boot:spring-boot-devtools")
 	runtimeOnly("com.h2database:h2")
 	runtimeOnly("org.postgresql:postgresql")

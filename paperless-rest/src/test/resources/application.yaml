@@ -38,8 +38,23 @@ paperless:
     ocr-routing-key: document.ocr
     ocr-result-queue: paperless.ocr.result.queue
     ocr-result-routing-key: document.ocr.result
+    dead-letter-exchange: paperless.dlx
+    ocr-dead-letter-queue: paperless.ocr.dlq
+    ocr-dead-letter-routing-key: document.ocr.dead
   rustfs:
     endpoint: http://localhost:9000
     access-key: test-access-key
     secret-key: test-secret-key
     bucket: paperless-documents
+    api-call-timeout: 120s
+    api-call-attempt-timeout: 30s
+
+resilience4j:
+  circuitbreaker:
+    instances:
+      # Opens when 50% of the last 10 searches failed (at least 5 calls), then skips Elasticsearch for 10s
+      search:
+        sliding-window-size: 10
+        minimum-number-of-calls: 5
+        failure-rate-threshold: 50
+        wait-duration-in-open-state: 10s

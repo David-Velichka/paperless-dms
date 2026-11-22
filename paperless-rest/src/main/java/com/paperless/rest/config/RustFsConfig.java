@@ -5,6 +5,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
 import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
+import software.amazon.awssdk.core.client.config.ClientOverrideConfiguration;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.s3.S3Client;
 
@@ -23,6 +24,11 @@ public class RustFsConfig {
                 .forcePathStyle(true)
                 .credentialsProvider(StaticCredentialsProvider.create(
                         AwsBasicCredentials.create(properties.accessKey(), properties.secretKey())))
+                // The built-in SDK retry (3 attempts with backoff) stays active, the timeouts cap each attempt and the call
+                .overrideConfiguration(ClientOverrideConfiguration.builder()
+                        .apiCallTimeout(properties.apiCallTimeout())
+                        .apiCallAttemptTimeout(properties.apiCallAttemptTimeout())
+                        .build())
                 .build();
     }
 }

@@ -7,6 +7,8 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 import org.springframework.boot.validation.autoconfigure.ValidationAutoConfiguration;
 
+import java.time.Duration;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -21,7 +23,7 @@ class RustFsPropertiesTest {
     static class PropertiesConfig {
     }
 
-    // GIVEN alle vier RustFS-Werte sind konfiguriert
+    // GIVEN alle RustFS-Werte inklusive Timeouts sind konfiguriert
     // WHEN der Kontext gestartet wird
     // THEN sind die Werte im RustFsProperties-Record verfügbar
     @Test
@@ -32,7 +34,9 @@ class RustFsPropertiesTest {
                         "paperless.rustfs.endpoint=http://rustfs:9000",
                         "paperless.rustfs.access-key=access",
                         "paperless.rustfs.secret-key=secret",
-                        "paperless.rustfs.bucket=documents")
+                        "paperless.rustfs.bucket=documents",
+                        "paperless.rustfs.api-call-timeout=120s",
+                        "paperless.rustfs.api-call-attempt-timeout=30s")
                 .run(context -> {
                     RustFsProperties properties = context.getBean(RustFsProperties.class);
                     assertNotNull(properties);
@@ -40,6 +44,8 @@ class RustFsPropertiesTest {
                     assertEquals("access", properties.accessKey());
                     assertEquals("secret", properties.secretKey());
                     assertEquals("documents", properties.bucket());
+                    assertEquals(Duration.ofSeconds(120), properties.apiCallTimeout());
+                    assertEquals(Duration.ofSeconds(30), properties.apiCallAttemptTimeout());
                 });
     }
 
@@ -54,7 +60,28 @@ class RustFsPropertiesTest {
                         "paperless.rustfs.endpoint=http://rustfs:9000",
                         "paperless.rustfs.access-key=access",
                         "paperless.rustfs.secret-key= ",
-                        "paperless.rustfs.bucket=documents")
+                        "paperless.rustfs.bucket=documents",
+                        "paperless.rustfs.api-call-timeout=120s",
+                        "paperless.rustfs.api-call-attempt-timeout=30s")
+                .run(context -> {
+                    assertNotNull(context.getStartupFailure());
+                    assertTrue(context.getStartupFailure().getMessage().contains("paperless.rustfs"));
+                });
+    }
+
+    // GIVEN der Timeout für einen einzelnen Versuch fehlt
+    // WHEN der Kontext gestartet wird
+    // THEN schlägt der Start mit einer Meldung zu paperless.rustfs fehl (Fail Fast)
+    @Test
+    @DisplayName("missing attempt timeout stops the start with a clear message")
+    void missingAttemptTimeout_FailsStartup() {
+        contextRunner
+                .withPropertyValues(
+                        "paperless.rustfs.endpoint=http://rustfs:9000",
+                        "paperless.rustfs.access-key=access",
+                        "paperless.rustfs.secret-key=secret",
+                        "paperless.rustfs.bucket=documents",
+                        "paperless.rustfs.api-call-timeout=120s")
                 .run(context -> {
                     assertNotNull(context.getStartupFailure());
                     assertTrue(context.getStartupFailure().getMessage().contains("paperless.rustfs"));

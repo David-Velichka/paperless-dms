@@ -5,6 +5,7 @@ import org.springframework.amqp.core.Binding;
 import org.springframework.amqp.core.BindingBuilder;
 import org.springframework.amqp.core.DirectExchange;
 import org.springframework.amqp.core.Queue;
+import org.springframework.amqp.core.QueueBuilder;
 import org.springframework.amqp.support.converter.JacksonJsonMessageConverter;
 import org.springframework.amqp.support.converter.MessageConverter;
 import org.springframework.boot.rabbitmq.autoconfigure.RabbitListenerRetrySettingsCustomizer;
@@ -18,10 +19,14 @@ import java.util.List;
 @EnableConfigurationProperties(RabbitMqProperties.class)
 public class RabbitMqConfig {
 
-    // Same durable queue as declared by paperless-rest, so the worker can start first
+    // Same durable queue as declared by paperless-rest, so the worker can start first.
+    // The arguments must match exactly: RabbitMQ refuses a queue redeclared with other arguments.
     @Bean
     public Queue ocrQueue(RabbitMqProperties properties) {
-        return new Queue(properties.ocrQueue(), true);
+        return QueueBuilder.durable(properties.ocrQueue())
+                .deadLetterExchange(properties.deadLetterExchange())
+                .deadLetterRoutingKey(properties.ocrDeadLetterRoutingKey())
+                .build();
     }
 
     // Exchange, result queue and binding are declared identically in paperless-rest, so either app can start first
@@ -39,6 +44,23 @@ public class RabbitMqConfig {
     public Binding ocrResultBinding(Queue ocrResultQueue, DirectExchange documentExchange,
                                    RabbitMqProperties properties) {
         return BindingBuilder.bind(ocrResultQueue).to(documentExchange).with(properties.ocrResultRoutingKey());
+    }
+
+    // Dead-letter queue: OCR jobs that were rejected or failed after all retries land here
+    @Bean
+    public DirectExchange deadLetterExchange(RabbitMqProperties properties) {
+        return new DirectExchange(properties.deadLetterExchange());
+    }
+
+    @Bean
+    public Queue ocrDeadLetterQueue(RabbitMqProperties properties) {
+        return new Queue(properties.ocrDeadLetterQueue(), true);
+    }
+
+    @Bean
+    public Binding ocrDeadLetterBinding(Queue ocrDeadLetterQueue, DirectExchange deadLetterExchange,
+                                        RabbitMqProperties properties) {
+        return BindingBuilder.bind(ocrDeadLetterQueue).to(deadLetterExchange).with(properties.ocrDeadLetterRoutingKey());
     }
 
     @Bean

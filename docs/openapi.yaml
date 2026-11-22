@@ -225,6 +225,7 @@ paths:
         Searches the OCR text and the original file name in Elasticsearch with fuzzy matching (typos are tolerated,
         for example "Helo" finds "Hello"), best match first. Documents whose title contains the query (case-insensitive)
         are appended. OCR text is searchable a few seconds after the upload, the title at once.
+        If Elasticsearch is not reachable, a circuit breaker falls back to the title search only (still HTTP 200).
       operationId: searchDocuments
       tags:
         - Documents
@@ -247,12 +248,6 @@ paths:
                   $ref: '#/components/schemas/DocumentResponseDto'
         '400':
           description: Validation error
-          content:
-            application/problem+json:
-              schema:
-                $ref: '#/components/schemas/ProblemDetail'
-        '503':
-          description: The search index (Elasticsearch) is not reachable
           content:
             application/problem+json:
               schema:
