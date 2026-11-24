@@ -30,7 +30,8 @@ public class OcrMessageProducer implements OcrJobPublisher {
                 document.getId(),
                 document.getOriginalFilename(),
                 document.getContentType(),
-                OffsetDateTime.now(ZoneOffset.UTC));
+                OffsetDateTime.now(ZoneOffset.UTC),
+                document.getStoragePath());
         try {
             rabbitTemplate.convertAndSend(rabbitMqProperties.exchange(), rabbitMqProperties.ocrRoutingKey(), message);
             log.info("OCR message sent documentId={} queue={}", document.getId(), rabbitMqProperties.ocrQueue());

@@ -1,6 +1,7 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { DocumentItem, DocumentStatus, DocumentStatusHistory, ToastMessage } from './types';
 import { API } from './services/api';
+import { formatStatus, getDocStatus } from './utils/formatters';
 import { Header } from './components/Header';
 import { StatsGrid } from './components/StatsGrid';
 import { ActionBar } from './components/ActionBar';
@@ -35,18 +36,75 @@ export const App: React.FC = () => {
     }, 4000);
   }, []);
 
-  const loadDocuments = useCallback(async (query: string = '') => {
+  // Latest search term, used to drop responses of older requests
+  const latestQuery = useRef<string>('');
+
+  const loadDocuments = useCallback(async (query: string = '', silent: boolean = false) => {
+    latestQuery.current = query;
     const online = await API.checkHealth();
     setIsOnline(online);
 
     try {
       const docs = await API.getDocuments(query);
-      setDocuments(docs);
+      if (query === latestQuery.current) {
+        setDocuments(docs);
+      }
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Failed to fetch documents';
-      addToast(msg, 'error');
+      if (!silent) {
+        const msg = err instanceof Error ? err.message : 'Failed to fetch documents';
+        addToast(msg, 'error');
+      }
     }
   }, [addToast]);
+
+  // Reload the list every 5 seconds while OCR is still running for a listed document
+  const isOcrRunning = documents.some((doc) => {
+    const status = getDocStatus(doc);
+    return status === 'RECEIVED' || status === 'PROCESSING';
+  });
+  const isModalOpen = isUploadOpen || selectedDoc !== null || docToDelete !== null;
+
+  useEffect(() => {
+    if (!isOcrRunning || isModalOpen) return;
+
+    const timer = setInterval(() => {
+      loadDocuments(searchQuery, true);
+    }, 5000);
+    return () => clearInterval(timer);
+  }, [isOcrRunning, isModalOpen, searchQuery, loadDocuments]);
+
+  // The open details dialog also follows the OCR: reload its document and history every 5 seconds
+  const openDocId = selectedDoc ? selectedDoc.id : null;
+  // Id of the document in the open dialog, read by async handlers so a late answer cannot reopen a closed dialog
+  const openDocIdRef = useRef<number | null>(null);
+  openDocIdRef.current = openDocId;
+  const openDocStatus = selectedDoc ? getDocStatus(selectedDoc) : null;
+  const isOpenDocOcrRunning = openDocStatus === 'RECEIVED' || openDocStatus === 'PROCESSING';
+
+  useEffect(() => {
+    if (openDocId === null || !isOpenDocOcrRunning) return;
+
+    // Set to true when the dialog closes or switches, so a late answer is ignored and cannot reopen it
+    let cancelled = false;
+    const timer = setInterval(async () => {
+      try {
+        const [doc, hist] = await Promise.all([
+          API.getDocumentById(openDocId),
+          API.getDocumentHistory(openDocId)
+        ]);
+        if (!cancelled) {
+          setSelectedDoc(doc);
+          setHistory(hist);
+        }
+      } catch {
+        // The next interval tries again
+      }
+    }, 5000);
+    return () => {
+      cancelled = true;
+      clearInterval(timer);
+    };
+  }, [openDocId, isOpenDocOcrRunning]);
 
   // Debounce search query changes
   useEffect(() => {
@@ -80,7 +138,7 @@ export const App: React.FC = () => {
 
     try {
       const uploaded = await API.uploadDocument(file, title);
-      addToast(`Document "${uploaded.title || uploaded.originalFilename}" uploaded successfully!`);
+      addToast(`Document "${uploaded.title || uploaded.originalFilename}" uploaded successfully! Text recognition is running, the content is searchable in a few seconds.`);
       await loadDocuments(searchQuery);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Failed to upload document';
@@ -115,16 +173,33 @@ export const App: React.FC = () => {
   ) => {
     try {
       const updated = await API.updateDocumentStatus(docId, targetStatus, comment);
-      addToast(`Document status transitioned to ${updated.status}`);
-      // Refresh current document view
+      addToast(`Document status transitioned to ${formatStatus(updated.status)}`);
+      // Refresh the document view, but only if the dialog still shows this document (it may have been closed)
       const doc = await API.getDocumentById(docId);
-      setSelectedDoc(doc);
       const hist = await API.getDocumentHistory(docId);
-      setHistory(hist);
+      if (openDocIdRef.current === docId) {
+        setSelectedDoc(doc);
+        setHistory(hist);
+      }
       // Refresh list
       await loadDocuments(searchQuery);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Status transition rejected';
+      addToast(msg, 'error');
+      throw err;
+    }
+  }, [addToast, loadDocuments, searchQuery]);
+
+  const handleUpdateTitle = useCallback(async (docId: number, title: string) => {
+    try {
+      const updated = await API.updateDocumentTitle(docId, title);
+      addToast(`Title changed to "${updated.title}"`);
+      if (openDocIdRef.current === docId) {
+        setSelectedDoc(updated);
+      }
+      await loadDocuments(searchQuery);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Title update failed';
       addToast(msg, 'error');
       throw err;
     }
@@ -183,6 +258,7 @@ export const App: React.FC = () => {
         isLoadingHistory={isLoadingHistory}
         onClose={() => setSelectedDoc(null)}
         onUpdateStatus={handleUpdateStatus}
+        onUpdateTitle={handleUpdateTitle}
       />
 
       <DeleteModal

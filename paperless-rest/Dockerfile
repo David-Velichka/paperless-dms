@@ -1,7 +1,7 @@
 # Multi-Stage Build for Spring Boot Application (Java 25)
 
 # Stage 1: Build & Dependencies Cache
-FROM eclipse-temurin:25-jdk-noble AS builder
+FROM eclipse-temurin:25-jdk-resolute AS builder
 WORKDIR /app
 
 # Copy gradle wrapper and build configs first for caching dependencies
@@ -14,7 +14,7 @@ COPY src/ ./src/
 RUN ./gradlew bootJar --no-daemon -x test
 
 # Stage 2: Minimal Runtime Image
-FROM eclipse-temurin:25-jre-noble AS runtime
+FROM eclipse-temurin:25-jre-resolute AS runtime
 WORKDIR /app
 
 # Run as non-root user for security

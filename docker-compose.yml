@@ -35,6 +35,56 @@ services:
       timeout: 10s
       retries: 10
 
+  rustfs:
+    image: rustfs/rustfs:1.0.6
+    container_name: paperless-rustfs
+    restart: unless-stopped
+    environment:
+      RUSTFS_ACCESS_KEY: ${RUSTFS_ACCESS_KEY}
+      RUSTFS_SECRET_KEY: ${RUSTFS_SECRET_KEY}
+      RUSTFS_CONSOLE_ENABLE: "true"
+      RUSTFS_CONSOLE_ADDRESS: ":9090"
+    ports:
+      - "9000:9000"
+      - "9090:9090"
+    volumes:
+      - rustfs_data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:9.5.6
+    container_name: paperless-elasticsearch
+    restart: unless-stopped
+    environment:
+      discovery.type: single-node
+      xpack.security.enabled: "false"
+      ES_JAVA_OPTS: -Xms512m -Xmx512m
+    ports:
+      - "9200:9200"
+    volumes:
+      - elasticsearch_data:/usr/share/elasticsearch/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fs http://localhost:9200/_cluster/health || exit 1"]
+      interval: 10s
+      timeout: 10s
+      retries: 20
+
+  kibana:
+    image: docker.elastic.co/kibana/kibana:9.5.6
+    container_name: paperless-kibana
+    restart: unless-stopped
+    environment:
+      ELASTICSEARCH_HOSTS: http://elasticsearch:9200
+    ports:
+      - "5601:5601"
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+
   paperless-rest:
     build:
       context: ./paperless-rest
@@ -50,10 +100,18 @@ services:
       SPRING_RABBITMQ_HOST: rabbitmq
       SPRING_RABBITMQ_USERNAME: ${RABBITMQ_DEFAULT_USER}
       SPRING_RABBITMQ_PASSWORD: ${RABBITMQ_DEFAULT_PASS}
+      RUSTFS_ENDPOINT: http://rustfs:9000
+      RUSTFS_ACCESS_KEY: ${RUSTFS_ACCESS_KEY}
+      RUSTFS_SECRET_KEY: ${RUSTFS_SECRET_KEY}
+      SPRING_ELASTICSEARCH_URIS: http://elasticsearch:9200
     depends_on:
       postgres:
         condition: service_healthy
       rabbitmq:
+        condition: service_healthy
+      rustfs:
+        condition: service_healthy
+      elasticsearch:
         condition: service_healthy
 
   paperless-ocr-worker:
@@ -66,8 +124,16 @@ services:
       SPRING_RABBITMQ_HOST: rabbitmq
       SPRING_RABBITMQ_USERNAME: ${RABBITMQ_DEFAULT_USER}
       SPRING_RABBITMQ_PASSWORD: ${RABBITMQ_DEFAULT_PASS}
+      RUSTFS_ENDPOINT: http://rustfs:9000
+      RUSTFS_ACCESS_KEY: ${RUSTFS_ACCESS_KEY}
+      RUSTFS_SECRET_KEY: ${RUSTFS_SECRET_KEY}
+      SPRING_ELASTICSEARCH_URIS: http://elasticsearch:9200
     depends_on:
       rabbitmq:
+        condition: service_healthy
+      rustfs:
+        condition: service_healthy
+      elasticsearch:
         condition: service_healthy
 
   paperless-webui:
@@ -84,3 +150,5 @@ services:
 volumes:
   postgres_data:
   rabbitmq_data:
+  rustfs_data:
+  elasticsearch_data:

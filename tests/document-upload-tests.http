@@ -58,6 +58,29 @@ Accept: application/json
 GET {{baseUrl}}/documents/search?query=Tax
 Accept: application/json
 
+### 7a. Upload HelloWorld.pdf for the content search (wait until its status is REVIEW_PENDING)
+POST {{baseUrl}}/documents/upload
+Content-Type: multipart/form-data; boundary=WebAppBoundary
+
+--WebAppBoundary
+Content-Disposition: form-data; name="file"; filename="HelloWorld.pdf"
+Content-Type: application/pdf
+
+< ./sample-documents/HelloWorld.pdf
+--WebAppBoundary--
+
+### 7b. Full-text search in the OCR content (finds HelloWorld.pdf)
+GET {{baseUrl}}/documents/search?query=Hello
+Accept: application/json
+
+### 7c. Fuzzy search with one typo (finds HelloWorld.pdf as well)
+GET {{baseUrl}}/documents/search?query=Helo
+Accept: application/json
+
+### 7d. Search without a match (empty array)
+GET {{baseUrl}}/documents/search?query=xyzabc
+Accept: application/json
+
 ### 8. Update document metadata (title)
 PUT {{baseUrl}}/documents/1
 Content-Type: application/json

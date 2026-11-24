@@ -11,7 +11,6 @@ export const Header: React.FC<HeaderProps> = ({ isOnline }) => {
         <a href="/" className="logo-group" id="logo-link">
           <div>
             <h1 className="logo-title">Paperless DMS</h1>
-            <div className="logo-subtitle">SWEN3 Semester Project</div>
           </div>
         </a>
         <div className="header-right">

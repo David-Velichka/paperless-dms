@@ -21,7 +21,7 @@ class RabbitMqPropertiesTest {
     static class PropertiesConfig {
     }
 
-    // GIVEN alle drei RabbitMQ-Namen sind konfiguriert
+    // GIVEN alle RabbitMQ-Namen sind konfiguriert
     // WHEN der Kontext gestartet wird
     // THEN sind die Werte im RabbitMqProperties-Record verfügbar
     @Test
@@ -31,13 +31,27 @@ class RabbitMqPropertiesTest {
                 .withPropertyValues(
                         "paperless.rabbitmq.exchange=ex",
                         "paperless.rabbitmq.ocr-queue=queue",
-                        "paperless.rabbitmq.ocr-routing-key=key")
+                        "paperless.rabbitmq.ocr-routing-key=key",
+                        "paperless.rabbitmq.ocr-result-queue=result-queue",
+                        "paperless.rabbitmq.ocr-result-routing-key=result-key",
+                        "paperless.rabbitmq.dead-letter-exchange=dlx",
+                        "paperless.rabbitmq.ocr-dead-letter-queue=dlq",
+                        "paperless.rabbitmq.ocr-dead-letter-routing-key=dead-key",
+                        "paperless.rabbitmq.ocr-result-dead-letter-queue=result-dlq",
+                        "paperless.rabbitmq.ocr-result-dead-letter-routing-key=result-dead-key")
                 .run(context -> {
                     RabbitMqProperties properties = context.getBean(RabbitMqProperties.class);
                     assertNotNull(properties);
                     assertEquals("ex", properties.exchange());
                     assertEquals("queue", properties.ocrQueue());
                     assertEquals("key", properties.ocrRoutingKey());
+                    assertEquals("result-queue", properties.ocrResultQueue());
+                    assertEquals("result-key", properties.ocrResultRoutingKey());
+                    assertEquals("dlx", properties.deadLetterExchange());
+                    assertEquals("dlq", properties.ocrDeadLetterQueue());
+                    assertEquals("dead-key", properties.ocrDeadLetterRoutingKey());
+                    assertEquals("result-dlq", properties.ocrResultDeadLetterQueue());
+                    assertEquals("result-dead-key", properties.ocrResultDeadLetterRoutingKey());
                 });
     }
 
@@ -51,7 +65,14 @@ class RabbitMqPropertiesTest {
                 .withPropertyValues(
                         "paperless.rabbitmq.exchange=ex",
                         "paperless.rabbitmq.ocr-queue= ",
-                        "paperless.rabbitmq.ocr-routing-key=key")
+                        "paperless.rabbitmq.ocr-routing-key=key",
+                        "paperless.rabbitmq.ocr-result-queue=result-queue",
+                        "paperless.rabbitmq.ocr-result-routing-key=result-key",
+                        "paperless.rabbitmq.dead-letter-exchange=dlx",
+                        "paperless.rabbitmq.ocr-dead-letter-queue=dlq",
+                        "paperless.rabbitmq.ocr-dead-letter-routing-key=dead-key",
+                        "paperless.rabbitmq.ocr-result-dead-letter-queue=result-dlq",
+                        "paperless.rabbitmq.ocr-result-dead-letter-routing-key=result-dead-key")
                 .run(context -> {
                     assertNotNull(context.getStartupFailure());
                     assertTrue(context.getStartupFailure().getMessage().contains("paperless.rabbitmq"));

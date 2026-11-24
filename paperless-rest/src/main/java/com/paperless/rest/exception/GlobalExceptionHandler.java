@@ -111,6 +111,19 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         return problem;
     }
 
+    @ExceptionHandler(StorageException.class)
+    public ProblemDetail handleStorageException(StorageException ex) {
+        log.error("Object storage unavailable message='{}'", ex.getMessage());
+        String message = "The document storage is currently not available. Please try again later.";
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.SERVICE_UNAVAILABLE, message);
+        problem.setTitle("Storage Unavailable");
+        problem.setType(URI.create("urn:paperless:problem:storage-unavailable"));
+        problem.setProperty("timestamp", OffsetDateTime.now(ZoneOffset.UTC));
+        problem.setProperty("error", problem.getTitle());
+        problem.setProperty("message", message);
+        return problem;
+    }
+
     @ExceptionHandler({OptimisticLockException.class, ObjectOptimisticLockingFailureException.class})
     public ProblemDetail handleOptimisticLock(Exception ex) {
         log.warn("Concurrent update conflict detected message='{}'", ex.getMessage());

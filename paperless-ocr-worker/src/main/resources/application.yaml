@@ -7,7 +7,7 @@ spring:
     port: ${SPRING_RABBITMQ_PORT:5672}
     username: ${SPRING_RABBITMQ_USERNAME}
     password: ${SPRING_RABBITMQ_PASSWORD}
-    # On an unexpected error retry 3 times (1s, 2s, 4s), then reject without requeue (no endless loop)
+    # On an unexpected error retry 3 times (1s, 2s, 4s), then reject without requeue into the dead-letter queue
     listener:
       simple:
         retry:
@@ -16,6 +16,36 @@ spring:
           initial-interval: 1s
           multiplier: 2
 
+  elasticsearch:
+    uris: ${SPRING_ELASTICSEARCH_URIS:http://localhost:9200}
+    # Explicit timeouts: a down or hanging Elasticsearch fails fast instead of blocking the caller
+    connection-timeout: 2s
+    socket-timeout: 5s
+
+paperless:
+  rabbitmq:
+    exchange: paperless.document.exchange
+    ocr-queue: paperless.ocr.queue
+    ocr-result-queue: paperless.ocr.result.queue
+    ocr-result-routing-key: document.ocr.result
+    dead-letter-exchange: paperless.dlx
+    ocr-dead-letter-queue: paperless.ocr.dlq
+    ocr-dead-letter-routing-key: document.ocr.dead
+    ocr-result-dead-letter-queue: paperless.ocr.result.dlq
+    ocr-result-dead-letter-routing-key: document.ocr.result.dead
+  rustfs:
+    endpoint: ${RUSTFS_ENDPOINT:http://localhost:9000}
+    access-key: ${RUSTFS_ACCESS_KEY}
+    secret-key: ${RUSTFS_SECRET_KEY}
+    bucket: paperless-documents
+    # Whole call including the SDK retries (enough for a 50 MB upload) and one single attempt
+    api-call-timeout: 120s
+    api-call-attempt-timeout: 30s
+  ocr:
+    # Folder with the Tesseract language files (set in the Docker image)
+    tessdata-path: ${TESSDATA_PREFIX}
+    language: eng+deu
+
 logging:
   level:
-    com.paperless.ocr: DEBUG
+    com.paperless.ocr: INFO

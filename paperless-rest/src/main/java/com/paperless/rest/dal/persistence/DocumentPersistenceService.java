@@ -39,12 +39,18 @@ public class DocumentPersistenceService {
 
     @Transactional(readOnly = true)
     public List<DocumentModel> findAll() {
-        return documentEntityMapper.toModelList(documentRepository.findAll());
+        return documentEntityMapper.toModelList(documentRepository.findAllByOrderByCreatedAtDescIdDesc());
     }
 
     @Transactional(readOnly = true)
     public List<DocumentModel> searchByTitle(String query) {
         return documentEntityMapper.toModelList(documentRepository.findByTitleContainingIgnoreCase(query));
+    }
+
+    // The order of the result is not defined
+    @Transactional(readOnly = true)
+    public List<DocumentModel> findAllByIds(List<Long> ids) {
+        return documentEntityMapper.toModelList(documentRepository.findAllById(ids));
     }
 
     @Transactional

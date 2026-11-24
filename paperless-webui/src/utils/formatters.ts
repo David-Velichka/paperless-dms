@@ -1,9 +1,9 @@
 import { DocumentItem, DocumentStatus } from '../types';
 
 export const STATUS_TRANSITIONS: Record<DocumentStatus, DocumentStatus[]> = {
-  RECEIVED: ['PROCESSING'],
-  PROCESSING: ['REVIEW_PENDING'],
-  REVIEW_PENDING: ['COMPLETED', 'REJECTED'],
+  RECEIVED: ['PROCESSING', 'REJECTED'],
+  PROCESSING: ['REVIEW_PENDING', 'REJECTED'],
+  REVIEW_PENDING: ['COMPLETED', 'REJECTED', 'PROCESSING'],
   COMPLETED: [],
   REJECTED: []
 };
@@ -23,7 +23,15 @@ export function formatDate(isoString: string | null | undefined): string {
   return date.toLocaleString();
 }
 
+// Readable status label, e.g. REVIEW_PENDING -> Review Pending
+export function formatStatus(status: DocumentStatus): string {
+  return status
+    .split('_')
+    .map((word) => word.charAt(0) + word.slice(1).toLowerCase())
+    .join(' ');
+}
+
 export function getDocStatus(doc: DocumentItem): DocumentStatus {
-  return doc.currentStatus || doc.status || 'RECEIVED';
+  return doc.currentStatus || 'RECEIVED';
 }
 

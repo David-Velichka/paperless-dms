@@ -18,6 +18,8 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
 
@@ -26,6 +28,9 @@ import java.util.Locale;
 @RequiredArgsConstructor
 @Slf4j
 public class DocumentController {
+
+    // Every PDF file starts with these bytes
+    private static final byte[] PDF_SIGNATURE = "%PDF-".getBytes(StandardCharsets.US_ASCII);
 
     private final DocumentService documentService;
     private final DocumentDtoMapper documentDtoMapper;
@@ -77,14 +82,16 @@ public class DocumentController {
             throw new InvalidDocumentException("Uploaded file must not be empty");
         }
 
-        // Same rule as the web UI: PDF by file name or by content type
+        // PDF only: the file name ends with .pdf and the content starts with the PDF signature.
+        // The content type is not used, the client can send any value.
         String filename = file.getOriginalFilename();
-        boolean isPdf = (filename != null && filename.toLowerCase(Locale.ROOT).endsWith(".pdf"))
-                || "application/pdf".equals(file.getContentType());
-        if (!isPdf) {
+        boolean hasPdfName = filename != null && filename.toLowerCase(Locale.ROOT).endsWith(".pdf");
+        // The bytes are only read when the name already fits
+        byte[] content = hasPdfName ? file.getBytes() : new byte[0];
+        if (!hasPdfName || !startsWithPdfSignature(content)) {
             log.warn("Document upload rejected because the file is not a PDF filename='{}' contentType={}",
                     filename, file.getContentType());
-            throw new InvalidFileTypeException("Only PDF documents (*.pdf) are supported");
+            throw new InvalidFileTypeException("Only PDF documents are supported (file name *.pdf and real PDF content)");
         }
 
         String documentTitle = (title != null && !title.isBlank())
@@ -100,8 +107,13 @@ public class DocumentController {
                 .fileSize(file.getSize())
                 .build();
 
-        DocumentModel saved = documentService.uploadDocument(model, file.getBytes());
+        DocumentModel saved = documentService.uploadDocument(model, content);
         return ResponseEntity.status(HttpStatus.CREATED).body(documentDtoMapper.toResponseDto(saved));
+    }
+
+    private static boolean startsWithPdfSignature(byte[] content) {
+        return content.length >= PDF_SIGNATURE.length
+                && Arrays.equals(content, 0, PDF_SIGNATURE.length, PDF_SIGNATURE, 0, PDF_SIGNATURE.length);
     }
 
     @DeleteMapping("/{id}")

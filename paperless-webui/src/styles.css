@@ -99,12 +99,6 @@ body {
     color: #ffffff;
 }
 
-.logo-subtitle {
-    font-size: 0.75rem;
-    color: var(--text-muted);
-    font-weight: 500;
-}
-
 .system-status {
     display: flex;
     align-items: center;
@@ -681,7 +675,8 @@ body {
 /* Toast Alerts */
 .toast-container {
     position: fixed;
-    bottom: 1.25rem;
+    /* Below the sticky header, so toasts never cover the row buttons at the bottom */
+    top: 5rem;
     right: 1.25rem;
     z-index: 200;
     display: flex;

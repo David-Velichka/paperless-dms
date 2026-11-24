@@ -126,6 +126,21 @@ class GlobalExceptionHandlerTest {
         assertEquals(URI.create("urn:paperless:problem:message-queue-unavailable"), problem.getType());
     }
 
+    // GIVEN eine StorageException, weil RustFS nicht erreichbar ist
+    // WHEN die handleStorageException-Methode aufgerufen wird
+    // THEN wird ein RFC 7807 ProblemDetail mit HTTP-Status 503 ohne interne Details zurückgegeben
+    @Test
+    void handleStorageException_ReturnsProblemDetail503() {
+        StorageException ex = new StorageException("Document file could not be stored", new RuntimeException("secret"));
+
+        ProblemDetail problem = handler.handleStorageException(ex);
+
+        assertEquals(HttpStatus.SERVICE_UNAVAILABLE.value(), problem.getStatus());
+        assertEquals("Storage Unavailable", problem.getTitle());
+        assertEquals("The document storage is currently not available. Please try again later.", problem.getDetail());
+        assertEquals(URI.create("urn:paperless:problem:storage-unavailable"), problem.getType());
+    }
+
     // GIVEN eine OptimisticLockException bei nebenläufiger Bearbeitung
     // WHEN die handleOptimisticLock-Methode aufgerufen wird
     // THEN wird ein RFC 7807 ProblemDetail mit HTTP-Status 409 zurückgegeben

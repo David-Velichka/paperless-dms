@@ -32,6 +32,20 @@ spring:
     password: ${SPRING_RABBITMQ_PASSWORD}
     # Fail fast when the broker is down (default is 60s), the upload then returns 503
     connection-timeout: 5s
+    # On an unexpected error retry 3 times (1s, 2s, 4s), then reject without requeue (no endless loop)
+    listener:
+      simple:
+        retry:
+          enabled: true
+          max-retries: 3
+          initial-interval: 1s
+          multiplier: 2
+
+  elasticsearch:
+    uris: ${SPRING_ELASTICSEARCH_URIS:http://localhost:9200}
+    # Explicit timeouts: a down or hanging Elasticsearch fails fast instead of blocking the caller
+    connection-timeout: 2s
+    socket-timeout: 5s
 
   flyway:
     enabled: false
@@ -41,19 +55,43 @@ paperless:
     exchange: paperless.document.exchange
     ocr-queue: paperless.ocr.queue
     ocr-routing-key: document.ocr
+    ocr-result-queue: paperless.ocr.result.queue
+    ocr-result-routing-key: document.ocr.result
+    dead-letter-exchange: paperless.dlx
+    ocr-dead-letter-queue: paperless.ocr.dlq
+    ocr-dead-letter-routing-key: document.ocr.dead
+    ocr-result-dead-letter-queue: paperless.ocr.result.dlq
+    ocr-result-dead-letter-routing-key: document.ocr.result.dead
+  rustfs:
+    endpoint: ${RUSTFS_ENDPOINT:http://localhost:9000}
+    access-key: ${RUSTFS_ACCESS_KEY}
+    secret-key: ${RUSTFS_SECRET_KEY}
+    bucket: paperless-documents
+    # Whole call including the SDK retries (enough for a 50 MB upload) and one single attempt
+    api-call-timeout: 120s
+    api-call-attempt-timeout: 30s
 
-rustfs:
-  endpoint: ${RUSTFS_ENDPOINT:http://localhost:9000}
-  access-key: ${RUSTFS_ROOT_USER:}
-  secret-key: ${RUSTFS_ROOT_PASSWORD:}
-  bucket-name: paperless-documents
+resilience4j:
+  circuitbreaker:
+    instances:
+      # Opens when 50% of the last 10 searches failed (at least 5 calls), then skips Elasticsearch for 10s
+      search:
+        sliding-window-size: 10
+        minimum-number-of-calls: 5
+        failure-rate-threshold: 50
+        wait-duration-in-open-state: 10s
 
-elasticsearch:
-  uris: ${ELASTICSEARCH_URIS:http://localhost:9200}
+# Title and version shown in the Swagger UI (same as docs/openapi.yaml)
+springdoc:
+  open-api:
+    info:
+      title: Paperless REST API
+      version: 0.4.0
 
 logging:
   level:
-    com.paperless.rest: DEBUG
+    com.paperless.rest: INFO
     org.springframework.web: INFO
-    org.hibernate.SQL: DEBUG
-    org.hibernate.orm.jdbc.bind: TRACE
+    org.hibernate.SQL: INFO
+    # TRACE would log every bound SQL value, including the whole OCR text
+    org.hibernate.orm.jdbc.bind: INFO

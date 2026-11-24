@@ -9,8 +9,8 @@ export interface DocumentItem {
   contentType?: string;
   createdAt: string;
   modifiedAt?: string;
-  status?: DocumentStatus;
   currentStatus?: DocumentStatus;
+  ocrText?: string | null;
 }
 
 export interface DocumentStatusHistory {

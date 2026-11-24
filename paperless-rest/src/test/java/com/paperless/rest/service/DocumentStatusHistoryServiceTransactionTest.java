@@ -26,6 +26,10 @@ class DocumentStatusHistoryServiceTransactionTest {
     @MockitoBean
     private DocumentStatusHistoryPersistenceService documentStatusHistoryPersistenceService;
 
+    // No RustFS in the test run: the real storage would connect to it at startup
+    @MockitoBean
+    private DocumentStorage documentStorage;
+
     // GIVEN ein gespeichertes Dokument und ein Fehler beim Speichern des Verlaufseintrags
     // WHEN der Status geändert wird
     // THEN bleibt der ursprüngliche Dokumentstatus erhalten

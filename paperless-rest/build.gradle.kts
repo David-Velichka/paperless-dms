@@ -1,12 +1,12 @@
 plugins {
 	java
 	jacoco
-	id("org.springframework.boot") version "4.1.1"
+	id("org.springframework.boot") version "4.2.0"
 	id("io.spring.dependency-management") version "1.1.7"
 }
 
 group = "com.paperless"
-version = "0.3.1"
+version = "0.4.0"
 
 java {
 	toolchain {
@@ -18,17 +18,28 @@ repositories {
 	mavenCentral()
 }
 
+dependencyManagement {
+	imports {
+		mavenBom("software.amazon.awssdk:bom:2.59.7")
+	}
+}
+
 dependencies {
 	implementation("org.springframework.boot:spring-boot-h2console")
-	implementation("org.springframework.boot:spring-boot-starter-amqp")
+	implementation("org.springframework.boot:spring-boot-starter-rabbitmq")
 	implementation("org.springframework.boot:spring-boot-starter-data-jpa")
+	implementation("org.springframework.boot:spring-boot-starter-data-elasticsearch")
 	implementation("org.springframework.boot:spring-boot-starter-flyway")
 	implementation("org.springframework.boot:spring-boot-starter-security")
 	implementation("org.springframework.boot:spring-boot-starter-validation")
 	implementation("org.springframework.boot:spring-boot-starter-webmvc")
 	implementation("com.fasterxml.jackson.core:jackson-databind:2.18.2")
-	implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:3.2.0")
+	implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:3.2.1")
 	implementation("org.flywaydb:flyway-database-postgresql")
+	implementation("software.amazon.awssdk:s3")
+	// Circuit breaker annotations need AspectJ on the classpath
+	implementation("io.github.resilience4j:resilience4j-spring-boot4:2.4.0")
+	implementation("org.springframework.boot:spring-boot-starter-aspectj")
 	developmentOnly("org.springframework.boot:spring-boot-devtools")
 	runtimeOnly("com.h2database:h2")
 	runtimeOnly("org.postgresql:postgresql")
@@ -37,20 +48,20 @@ dependencies {
 	compileOnly("org.projectlombok:lombok")
 	annotationProcessor("org.projectlombok:lombok")
 	annotationProcessor("org.projectlombok:lombok-mapstruct-binding:0.2.0")
-	implementation("org.mapstruct:mapstruct:1.6.2")
-	annotationProcessor("org.mapstruct:mapstruct-processor:1.6.2")
+	implementation("org.mapstruct:mapstruct:1.6.3")
+	annotationProcessor("org.mapstruct:mapstruct-processor:1.6.3")
 
 	// Test dependencies
 	testImplementation("org.springframework.boot:spring-boot-starter-test")
 	testImplementation("org.springframework.boot:spring-boot-starter-webmvc-test")
 	testImplementation("org.springframework.boot:spring-boot-starter-data-jpa-test")
-	testImplementation("org.springframework.boot:spring-boot-starter-amqp-test")
+	testImplementation("org.springframework.boot:spring-boot-starter-rabbitmq-test")
 	testImplementation("org.springframework.security:spring-security-test")
 	testCompileOnly("org.projectlombok:lombok")
 	testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 	testAnnotationProcessor("org.projectlombok:lombok")
 	testAnnotationProcessor("org.projectlombok:lombok-mapstruct-binding:0.2.0")
-	testAnnotationProcessor("org.mapstruct:mapstruct-processor:1.6.2")
+	testAnnotationProcessor("org.mapstruct:mapstruct-processor:1.6.3")
 }
 
 tasks.withType<JavaCompile> {
@@ -66,7 +77,7 @@ tasks.withType<Test> {
 	useJUnitPlatform()
 }
 
-// Coverage report (build/reports/jacoco) and >70% line coverage check required by the course
+// Coverage report (build/reports/jacoco) and >70% line coverage check
 tasks.test {
 	finalizedBy(tasks.jacocoTestReport)
 }

@@ -14,34 +14,50 @@ jobs:
       run:
         working-directory: paperless-rest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-java@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-java@v6
         with:
           distribution: temurin
           java-version: "25"
-      - uses: gradle/actions/setup-gradle@v4
+      # basic = open-source caching (default "enhanced" is proprietary)
+      - uses: gradle/actions/setup-gradle@v6
+        with:
+          cache-provider: basic
       # check = unit tests + JaCoCo report + 70% line coverage gate
       - run: ./gradlew check --no-daemon
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: paperless-rest-coverage
           path: paperless-rest/build/reports/jacoco/test/html
 
   paperless-ocr-worker:
-    name: OCR worker tests
+    name: OCR worker tests and coverage
     runs-on: ubuntu-latest
     defaults:
       run:
         working-directory: paperless-ocr-worker
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-java@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-java@v6
         with:
           distribution: temurin
           java-version: "25"
-      - uses: gradle/actions/setup-gradle@v4
+      - uses: gradle/actions/setup-gradle@v6
+        with:
+          cache-provider: basic
+      # Tesseract and Ghostscript are needed by the real OCR test
+      - run: sudo apt-get update && sudo apt-get install -y --no-install-recommends tesseract-ocr tesseract-ocr-eng tesseract-ocr-deu ghostscript
+      # check = unit tests + JaCoCo report + 70% line coverage gate
       - run: ./gradlew check --no-daemon
+        env:
+          TESSDATA_PREFIX: /usr/share/tesseract-ocr/5/tessdata
+      # Test reports show whether the real OCR test ran or was skipped
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: paperless-ocr-worker-test-results
+          path: paperless-ocr-worker/build/test-results/test
 
   paperless-webui:
     name: Web UI build
@@ -50,10 +66,10 @@ jobs:
       run:
         working-directory: paperless-webui
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
-          node-version: "20"
+          node-version: "26"
           cache: npm
           cache-dependency-path: paperless-webui/package-lock.json
       - run: npm ci
@@ -65,7 +81,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: [paperless-rest, paperless-ocr-worker, paperless-webui]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       # The compose file needs the variables from .env, the example file is enough for a build
       - run: cp .env.example .env
       - run: docker compose build

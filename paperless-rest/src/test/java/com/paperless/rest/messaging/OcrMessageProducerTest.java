@@ -25,7 +25,8 @@ import static org.mockito.Mockito.verify;
 class OcrMessageProducerTest {
 
     private static final RabbitMqProperties PROPERTIES =
-            new RabbitMqProperties("test.exchange", "test.queue", "test.routing");
+            new RabbitMqProperties("test.exchange", "test.queue", "test.routing", "test.result.queue", "test.result",
+                    "test.dlx", "test.dlq", "test.dead", "test.result.dlq", "test.result.dead");
 
     @Mock
     private RabbitTemplate rabbitTemplate;
@@ -42,11 +43,12 @@ class OcrMessageProducerTest {
             .title("Invoice")
             .originalFilename("invoice.pdf")
             .contentType("application/pdf")
+            .storagePath("5f1c0f0e-0000-4000-8000-000000000001.pdf")
             .build();
 
     // GIVEN ein gespeichertes Dokument
     // WHEN sendOcrMessage aufgerufen wird
-    // THEN wird eine OcrMessage mit Dokument-ID und Dateiname an den OCR-Exchange gesendet
+    // THEN wird eine OcrMessage mit Dokument-ID, Dateiname und Storage-Key an den OCR-Exchange gesendet
     @Test
     void sendOcrMessage_SendsMessageToOcrExchange() {
         ocrMessageProducer.sendOcrMessage(document);
@@ -59,6 +61,7 @@ class OcrMessageProducerTest {
         assertEquals("invoice.pdf", message.originalFilename());
         assertEquals("application/pdf", message.contentType());
         assertNotNull(message.uploadedAt());
+        assertEquals("5f1c0f0e-0000-4000-8000-000000000001.pdf", message.storageKey());
     }
 
     // GIVEN RabbitMQ ist nicht erreichbar

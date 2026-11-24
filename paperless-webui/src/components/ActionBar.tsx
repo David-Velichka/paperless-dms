@@ -48,14 +48,16 @@ export const ActionBar: React.FC<ActionBarProps> = ({
           <input
             type="text"
             id="search-input"
+            aria-label="Search documents"
             className="search-input"
-            placeholder="Search documents by title..."
+            placeholder="Search documents by title or content..."
             value={searchValue}
             onChange={(e) => setSearchValue(e.target.value)}
           />
         </div>
         <select
           id="status-filter"
+          aria-label="Filter by status"
           className="filter-select"
           value={selectedStatus}
           onChange={(e) => onStatusChange(e.target.value as DocumentStatus | 'ALL')}

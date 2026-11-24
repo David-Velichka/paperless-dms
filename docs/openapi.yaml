@@ -1,8 +1,8 @@
 openapi: 3.0.3
 info:
   title: Paperless REST API
-  description: RESTful API for Paperless Document Management System (SWEN3 Semester Project)
-  version: 0.3.1
+  description: RESTful API for the Paperless Document Management System
+  version: 0.4.0
 
 servers:
   - url: http://localhost:8081
@@ -38,7 +38,7 @@ paths:
         - Documents
       responses:
         '200':
-          description: List of documents successfully retrieved
+          description: List of documents sorted by upload time (newest first), without ocrText
           content:
             application/json:
               schema:
@@ -73,7 +73,7 @@ paths:
   /api/v1/documents/upload:
     post:
       summary: Upload a document file
-      description: Uploads a document file with optional title metadata, persists the initial document record and sends an OCR job to RabbitMQ (queue paperless.ocr.queue). Metadata and message are handled in one transaction.
+      description: Uploads a document file with optional title metadata. The file is stored in the RustFS bucket first (object key is a random UUID with the extension .pdf and is saved as storagePath), then the initial document record is persisted and an OCR job with the storage key is sent to RabbitMQ (queue paperless.ocr.queue). Metadata and message are handled in one transaction. If one of these steps fails, the stored file is deleted again.
       operationId: uploadDocument
       tags:
         - Documents
@@ -113,13 +113,13 @@ paths:
               schema:
                 $ref: '#/components/schemas/ProblemDetail'
         '415':
-          description: File is not a PDF (file name does not end with .pdf and content type is not application/pdf)
+          description: File is not a PDF (file name does not end with .pdf or the content does not start with the PDF signature %PDF-)
           content:
             application/problem+json:
               schema:
                 $ref: '#/components/schemas/ProblemDetail'
         '503':
-          description: RabbitMQ not reachable, document was not saved
+          description: RabbitMQ or the object storage (RustFS) is not reachable, document was not saved and no file is left in the storage
           content:
             application/problem+json:
               schema:
@@ -197,7 +197,7 @@ paths:
                 $ref: '#/components/schemas/ProblemDetail'
     delete:
       summary: Delete document by ID
-      description: Deletes document if present, returning HTTP 204 No Content unconditionally per RFC 9110 idempotency
+      description: Deletes the document, its status history and its file in the object storage. Returns HTTP 204 No Content also when the document does not exist (idempotent, RFC 9110). If the object storage is not reachable, nothing is deleted and 503 is returned. The search index entry is removed last on a best-effort basis, a failure there is only logged.
       operationId: deleteDocument
       tags:
         - Documents
@@ -211,10 +211,21 @@ paths:
       responses:
         '204':
           description: Document deleted or already absent (idempotent)
+        '503':
+          description: Object storage (RustFS) is not reachable, nothing was deleted
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
 
   /api/v1/documents/search:
     get:
       summary: Full-text search for documents
+      description: >-
+        Searches the OCR text and the original file name in Elasticsearch with fuzzy matching (typos are tolerated,
+        for example "Helo" finds "Hello"), best match first. Documents whose title contains the query (case-insensitive)
+        are appended. OCR text is searchable a few seconds after the upload, the title at once.
+        If Elasticsearch is not reachable, a circuit breaker falls back to the title search only (still HTTP 200).
       operationId: searchDocuments
       tags:
         - Documents
@@ -228,7 +239,7 @@ paths:
             maxLength: 100
       responses:
         '200':
-          description: Search results
+          description: Search results without ocrText, an empty array if nothing matches
           content:
             application/json:
               schema:
@@ -404,9 +415,10 @@ components:
           example: 1048576
         storagePath:
           type: string
-          example: documents/2026/invoice_q1.pdf
+          example: 3f2b6c1e-8a4d-4b7e-9f10-2c5d7e8a9b01.pdf
         ocrText:
           type: string
+          description: Only in the single document response, null in the list and search responses
           example: "Total amount due: 1500 EUR"
         summary:
           type: string

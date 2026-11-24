@@ -30,14 +30,14 @@ try {
 
 # 3. Error case: non-PDF file
 Write-Host "`n--- 3. Testing POST /api/v1/documents/upload with a non-PDF file (expect 415) ---" -ForegroundColor Yellow
-$codeTxt = curl.exe -s -o /dev/null -w "%{http_code}" -X POST "$BaseUrl/documents/upload" -F "file=@$SampleTxt;type=text/plain"
+$codeTxt = curl.exe -s -o NUL -w "%{http_code}" -X POST "$BaseUrl/documents/upload" -F "file=@$SampleTxt;type=text/plain"
 Write-Host "HTTP Status (expected 415): $codeTxt" -ForegroundColor Green
 
 # 4. Error case: Empty file
 Write-Host "`n--- 4. Testing POST /api/v1/documents/upload with empty file (expect 400) ---" -ForegroundColor Yellow
 $emptyFile = Join-Path $ScriptDir "empty_temp.tmp"
 New-Item -ItemType File -Path $emptyFile -Force | Out-Null
-$code = curl.exe -s -o /dev/null -w "%{http_code}" -X POST "$BaseUrl/documents/upload" -F "file=@$emptyFile"
+$code = curl.exe -s -o NUL -w "%{http_code}" -X POST "$BaseUrl/documents/upload" -F "file=@$emptyFile"
 Remove-Item $emptyFile -Force
 Write-Host "HTTP Status (expected 400): $code" -ForegroundColor Green
 

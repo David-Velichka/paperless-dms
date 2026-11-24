@@ -86,6 +86,23 @@ export const API = {
     return res.json();
   },
 
+  async updateDocumentTitle(id: number, title: string): Promise<DocumentItem> {
+    const res = await fetch(`${this.BASE_URL}/documents/${id}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: 'application/json'
+      },
+      body: JSON.stringify({ title })
+    });
+
+    if (!res.ok) {
+      const errorMessage = await this.parseError(res, 'Title update failed');
+      throw new Error(errorMessage);
+    }
+    return res.json();
+  },
+
   async deleteDocument(id: number): Promise<boolean> {
     const res = await fetch(`${this.BASE_URL}/documents/${id}`, {
       method: 'DELETE'
@@ -97,21 +114,6 @@ export const API = {
 
     const errorMessage = await this.parseError(res, 'Delete failed');
     throw new Error(errorMessage);
-  },
-
-  async getDocumentStatus(id: number): Promise<{ status: DocumentStatus }> {
-    const res = await fetch(`${this.BASE_URL}/documents/${id}/status`, {
-      method: 'GET',
-      headers: {
-        Accept: 'application/json'
-      }
-    });
-
-    if (!res.ok) {
-      const errorMessage = await this.parseError(res, 'Failed to fetch status');
-      throw new Error(errorMessage);
-    }
-    return res.json();
   },
 
   async updateDocumentStatus(

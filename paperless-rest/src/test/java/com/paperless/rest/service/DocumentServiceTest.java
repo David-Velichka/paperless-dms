@@ -4,16 +4,23 @@ import com.paperless.rest.dal.persistence.DocumentPersistenceService;
 import com.paperless.rest.exception.BusinessLayerException;
 import com.paperless.rest.exception.DocumentNotFoundException;
 import com.paperless.rest.exception.MessageQueueException;
+import com.paperless.rest.exception.SearchException;
+import com.paperless.rest.exception.StorageException;
 import com.paperless.rest.service.impl.DocumentServiceImpl;
 import com.paperless.rest.service.model.DocumentModel;
 import com.paperless.rest.service.model.DocumentStatus;
 import com.paperless.rest.service.validation.DocumentModelValidator;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
+import org.mockito.InOrder;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.util.List;
 import java.util.Optional;
@@ -36,6 +43,12 @@ class DocumentServiceTest {
     @Mock
     private OcrJobPublisher ocrJobPublisher;
 
+    @Mock
+    private DocumentStorage documentStorage;
+
+    @Mock
+    private DocumentSearchIndex documentSearchIndex;
+
     @InjectMocks
     private DocumentServiceImpl documentService;
 
@@ -48,6 +61,20 @@ class DocumentServiceTest {
                 .title("Test Invoice")
                 .currentStatus(DocumentStatus.RECEIVED)
                 .build();
+        // No Spring transaction in unit tests: allow the upload to register its rollback callback
+        TransactionSynchronizationManager.initSynchronization();
+    }
+
+    @AfterEach
+    void tearDown() {
+        TransactionSynchronizationManager.clearSynchronization();
+    }
+
+    // Simulates the end of the upload transaction with the given status
+    private void completeTransaction(int status) {
+        for (TransactionSynchronization synchronization : TransactionSynchronizationManager.getSynchronizations()) {
+            synchronization.afterCompletion(status);
+        }
     }
 
     // GIVEN ein gültiges DocumentModel
@@ -165,19 +192,61 @@ class DocumentServiceTest {
         assertEquals("Test Invoice", result.get(0).getTitle());
     }
 
-    // GIVEN ein Suchbegriff
+    // GIVEN Elasticsearch findet die Dokumente 3 und 1 in dieser Reihenfolge
     // WHEN search aufgerufen wird
-    // THEN werden passende Dokumente über den Persistence Service gefiltert
+    // THEN werden die Dokumente aus der Datenbank in der Reihenfolge von Elasticsearch zurückgegeben
     @Test
-    void search_WithMatchingQuery_ReturnsFilteredDocuments() {
-        when(documentPersistenceService.searchByTitle("Invoice")).thenReturn(List.of(sampleModel));
+    void search_KeepsElasticsearchOrder() {
+        DocumentModel third = DocumentModel.builder().id(3L).title("Third").build();
+        when(documentSearchIndex.search("Hello")).thenReturn(List.of(3L, 1L));
+        when(documentPersistenceService.findAllByIds(List.of(3L, 1L))).thenReturn(List.of(sampleModel, third));
+        when(documentPersistenceService.searchByTitle("Hello")).thenReturn(List.of());
 
-        List<DocumentModel> result = documentService.search("Invoice");
+        List<DocumentModel> result = documentService.search("Hello");
 
-        assertNotNull(result);
+        assertEquals(List.of(3L, 1L), result.stream().map(DocumentModel::getId).toList());
+    }
+
+    // GIVEN Elasticsearch liefert eine ID, zu der es keine Zeile in der Datenbank gibt
+    // WHEN search aufgerufen wird
+    // THEN wird diese ID weggelassen
+    @Test
+    void search_DropsIdsWithoutDatabaseRow() {
+        when(documentSearchIndex.search("Hello")).thenReturn(List.of(9L, 1L));
+        when(documentPersistenceService.findAllByIds(List.of(9L, 1L))).thenReturn(List.of(sampleModel));
+        when(documentPersistenceService.searchByTitle("Hello")).thenReturn(List.of());
+
+        List<DocumentModel> result = documentService.search("Hello");
+
         assertEquals(1, result.size());
-        assertEquals("Test Invoice", result.get(0).getTitle());
-        verify(documentPersistenceService, times(1)).searchByTitle("Invoice");
+        assertEquals(1L, result.get(0).getId());
+    }
+
+    // GIVEN Elasticsearch und die Titelsuche finden teilweise dieselben Dokumente
+    // WHEN search aufgerufen wird
+    // THEN werden die Titeltreffer ohne Duplikate hinten angehängt
+    @Test
+    void search_AppendsTitleMatchesWithoutDuplicates() {
+        DocumentModel titleOnly = DocumentModel.builder().id(2L).title("Test Report").build();
+        when(documentSearchIndex.search("Test")).thenReturn(List.of(1L));
+        when(documentPersistenceService.findAllByIds(List.of(1L))).thenReturn(List.of(sampleModel));
+        when(documentPersistenceService.searchByTitle("Test")).thenReturn(List.of(sampleModel, titleOnly));
+
+        List<DocumentModel> result = documentService.search("Test");
+
+        assertEquals(List.of(1L, 2L), result.stream().map(DocumentModel::getId).toList());
+    }
+
+    // GIVEN der Suchindex ist nicht erreichbar
+    // WHEN search aufgerufen wird
+    // THEN wird die SearchException weitergegeben
+    @Test
+    void search_WhenIndexFails_PropagatesSearchException() {
+        when(documentSearchIndex.search("Hello"))
+                .thenThrow(new SearchException("Search index could not be queried", new RuntimeException("down")));
+
+        assertThrows(SearchException.class, () -> documentService.search("Hello"));
+        verify(documentPersistenceService, never()).searchByTitle(any());
     }
 
     // GIVEN ein leerer Suchbegriff
@@ -192,6 +261,7 @@ class DocumentServiceTest {
         assertNotNull(result);
         assertEquals(1, result.size());
         verify(documentPersistenceService, times(1)).findAll();
+        verifyNoInteractions(documentSearchIndex);
     }
 
     // GIVEN eine existierende Dokument-ID
@@ -199,7 +269,7 @@ class DocumentServiceTest {
     // THEN werden Verläufe und das Dokument gelöscht
     @Test
     void deleteById_WhenExists_DeletesDocumentAndHistory() {
-        when(documentPersistenceService.existsById(1L)).thenReturn(true);
+        when(documentPersistenceService.findById(1L)).thenReturn(Optional.of(sampleModel));
         doNothing().when(documentStatusHistoryService).deleteByDocumentId(1L);
         doNothing().when(documentPersistenceService).deleteById(1L);
 
@@ -209,16 +279,96 @@ class DocumentServiceTest {
         verify(documentPersistenceService, times(1)).deleteById(1L);
     }
 
+    // GIVEN eine existierende Dokument-ID
+    // WHEN deleteById aufgerufen wird
+    // THEN wird auch der Eintrag im Suchindex gelöscht
+    @Test
+    void deleteById_WhenExists_DeletesIndexEntry() {
+        when(documentPersistenceService.findById(1L)).thenReturn(Optional.of(sampleModel));
+
+        documentService.deleteById(1L);
+
+        verify(documentSearchIndex, times(1)).delete(1L);
+    }
+
+    // GIVEN ein existierendes Dokument, aber der Suchindex ist nicht erreichbar
+    // WHEN deleteById aufgerufen wird
+    // THEN wird das Dokument trotzdem gelöscht und kein Fehler geworfen
+    @Test
+    void deleteById_WhenIndexFails_StillDeletesDocument() {
+        when(documentPersistenceService.findById(1L)).thenReturn(Optional.of(sampleModel));
+        doThrow(new SearchException("Search index entry could not be deleted", new RuntimeException("down")))
+                .when(documentSearchIndex).delete(1L);
+
+        assertDoesNotThrow(() -> documentService.deleteById(1L));
+        verify(documentPersistenceService, times(1)).deleteById(1L);
+    }
+
+    // GIVEN ein existierendes Dokument, aber der Object Storage ist nicht erreichbar
+    // WHEN deleteById aufgerufen wird
+    // THEN bleibt der Eintrag im Suchindex erhalten, weil die Transaktion zurückgerollt wird
+    @Test
+    void deleteById_WhenStorageFails_KeepsIndexEntry() {
+        DocumentModel withFile = sampleModel.toBuilder().storagePath("abc.pdf").build();
+        when(documentPersistenceService.findById(1L)).thenReturn(Optional.of(withFile));
+        doThrow(new StorageException("Document file could not be deleted", new RuntimeException("down")))
+                .when(documentStorage).delete("abc.pdf");
+
+        assertThrows(StorageException.class, () -> documentService.deleteById(1L));
+        verifyNoInteractions(documentSearchIndex);
+    }
+
+    // GIVEN ein existierendes Dokument mit Storage-Key
+    // WHEN deleteById aufgerufen wird
+    // THEN wird auch die Datei im Object Storage gelöscht
+    @Test
+    void deleteById_WhenDocumentHasStoragePath_DeletesFileFromStorage() {
+        DocumentModel withFile = sampleModel.toBuilder().storagePath("abc.pdf").build();
+        when(documentPersistenceService.findById(1L)).thenReturn(Optional.of(withFile));
+
+        documentService.deleteById(1L);
+
+        verify(documentStorage, times(1)).delete("abc.pdf");
+    }
+
+    // GIVEN ein existierendes Dokument ohne Storage-Key
+    // WHEN deleteById aufgerufen wird
+    // THEN wird der Object Storage nicht aufgerufen
+    @Test
+    void deleteById_WhenDocumentHasNoStoragePath_SkipsStorage() {
+        when(documentPersistenceService.findById(1L)).thenReturn(Optional.of(sampleModel));
+
+        documentService.deleteById(1L);
+
+        verify(documentPersistenceService, times(1)).deleteById(1L);
+        verifyNoInteractions(documentStorage);
+    }
+
+    // GIVEN ein existierendes Dokument, aber der Object Storage ist nicht erreichbar
+    // WHEN deleteById aufgerufen wird
+    // THEN wird die StorageException weitergegeben, damit die Transaktion zurückgerollt wird
+    @Test
+    void deleteById_WhenStorageFails_PropagatesStorageException() {
+        DocumentModel withFile = sampleModel.toBuilder().storagePath("abc.pdf").build();
+        when(documentPersistenceService.findById(1L)).thenReturn(Optional.of(withFile));
+        doThrow(new StorageException("Document file could not be deleted", new RuntimeException("down")))
+                .when(documentStorage).delete("abc.pdf");
+
+        assertThrows(StorageException.class, () -> documentService.deleteById(1L));
+    }
+
     // GIVEN eine nicht existierende Dokument-ID
     // WHEN deleteById aufgerufen wird
     // THEN wird die Operation idempotent ohne Ausnahme abgeschlossen
     @Test
     void deleteById_WhenNotFound_CompletesIdempotentlyWithoutException() {
-        when(documentPersistenceService.existsById(99L)).thenReturn(false);
+        when(documentPersistenceService.findById(99L)).thenReturn(Optional.empty());
 
         assertDoesNotThrow(() -> documentService.deleteById(99L));
         verify(documentPersistenceService, never()).deleteById(any());
         verify(documentStatusHistoryService, never()).deleteByDocumentId(any());
+        verifyNoInteractions(documentStorage);
+        verifyNoInteractions(documentSearchIndex);
     }
 
     // GIVEN eine Null-Dokument-ID zum Löschen
@@ -267,9 +417,102 @@ class DocumentServiceTest {
         verify(ocrJobPublisher, times(1)).sendOcrMessage(expectedModel);
     }
 
-    // GIVEN ein gültiges Dokument, aber RabbitMQ ist nicht erreichbar
+    // GIVEN ein gültiges DocumentModel und Dateiinhalt
     // WHEN uploadDocument aufgerufen wird
-    // THEN wird die MessageQueueException weitergegeben, damit die Transaktion zurückgerollt wird
+    // THEN wird die Datei unter einem UUID-Key gespeichert und derselbe Key als storagePath abgelegt
+    @Test
+    void uploadDocument_StoresFileAndSetsStoragePath() {
+        DocumentModel inputModel = DocumentModel.builder()
+                .title("Upload Test").originalFilename("test.pdf").contentType("application/pdf").build();
+        when(documentPersistenceService.save(any(DocumentModel.class)))
+                .thenAnswer(invocation -> ((DocumentModel) invocation.getArgument(0)).toBuilder().id(10L).build());
+        byte[] content = "dummy content".getBytes();
+
+        DocumentModel result = documentService.uploadDocument(inputModel, content);
+
+        ArgumentCaptor<String> keyCaptor = ArgumentCaptor.forClass(String.class);
+        verify(documentStorage).store(keyCaptor.capture(), eq(content), eq("application/pdf"));
+        String key = keyCaptor.getValue();
+        assertTrue(key.matches("[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\\.pdf"));
+        assertEquals(key, result.getStoragePath());
+        verify(documentStorage, never()).delete(any());
+    }
+
+    // GIVEN ein gültiges Dokument, aber der Object Storage ist nicht erreichbar
+    // WHEN uploadDocument aufgerufen wird
+    // THEN wird die StorageException weitergegeben und nichts in Datenbank oder Queue geschrieben
+    @Test
+    void uploadDocument_WhenStorageFails_SavesNothing() {
+        DocumentModel inputModel = DocumentModel.builder().title("Upload Test").originalFilename("test.pdf").build();
+        doThrow(new StorageException("Document file could not be stored", new RuntimeException("down")))
+                .when(documentStorage).store(anyString(), any(byte[].class), any());
+
+        assertThrows(StorageException.class,
+                () -> documentService.uploadDocument(inputModel, "content".getBytes()));
+
+        verify(documentPersistenceService, never()).save(any());
+        verify(documentStatusHistoryService, never()).createInitialHistory(any(), any());
+        verify(ocrJobPublisher, never()).sendOcrMessage(any());
+        verify(documentStorage, never()).delete(any());
+        assertTrue(TransactionSynchronizationManager.getSynchronizations().isEmpty());
+    }
+
+    // GIVEN ein gespeicherter Blob, aber das Speichern der Metadaten schlägt fehl
+    // WHEN die Transaktion danach zurückgerollt wird
+    // THEN löscht der registrierte Rollback-Callback den Blob wieder
+    @Test
+    void uploadDocument_WhenSaveFailsAndRolledBack_DeletesStoredFile() {
+        DocumentModel inputModel = DocumentModel.builder().title("Upload Test").originalFilename("test.pdf").build();
+        when(documentPersistenceService.save(any(DocumentModel.class))).thenThrow(new IllegalStateException("db down"));
+
+        assertThrows(IllegalStateException.class,
+                () -> documentService.uploadDocument(inputModel, "content".getBytes()));
+        assertEquals(1, TransactionSynchronizationManager.getSynchronizations().size());
+        verify(documentStorage, never()).delete(any());
+
+        completeTransaction(TransactionSynchronization.STATUS_ROLLED_BACK);
+
+        ArgumentCaptor<String> storedKey = ArgumentCaptor.forClass(String.class);
+        verify(documentStorage).store(storedKey.capture(), any(byte[].class), any());
+        verify(documentStorage).delete(storedKey.getValue());
+    }
+
+    // GIVEN ein erfolgreicher Upload
+    // WHEN die Transaktion committed wird
+    // THEN bleibt der Blob im Object Storage erhalten
+    @Test
+    void uploadDocument_WhenCommitted_KeepsStoredFile() {
+        DocumentModel inputModel = DocumentModel.builder().title("Upload Test").originalFilename("test.pdf").build();
+        when(documentPersistenceService.save(any(DocumentModel.class)))
+                .thenAnswer(invocation -> ((DocumentModel) invocation.getArgument(0)).toBuilder().id(10L).build());
+
+        documentService.uploadDocument(inputModel, "content".getBytes());
+        completeTransaction(TransactionSynchronization.STATUS_COMMITTED);
+
+        verify(documentStorage, never()).delete(any());
+    }
+
+    // GIVEN ein zurückgerollter Upload, aber das Löschen beim Kompensieren schlägt ebenfalls fehl
+    // WHEN der Rollback-Callback ausgeführt wird
+    // THEN wird keine weitere Exception geworfen
+    @Test
+    void uploadDocument_WhenCompensationFails_DoesNotThrow() {
+        DocumentModel inputModel = DocumentModel.builder().title("Upload Test").originalFilename("test.pdf").build();
+        when(documentPersistenceService.save(any(DocumentModel.class))).thenThrow(new IllegalStateException("db down"));
+        doThrow(new StorageException("Document file could not be deleted", new RuntimeException("down")))
+                .when(documentStorage).delete(anyString());
+
+        IllegalStateException ex = assertThrows(IllegalStateException.class,
+                () -> documentService.uploadDocument(inputModel, "content".getBytes()));
+
+        assertEquals("db down", ex.getMessage());
+        assertDoesNotThrow(() -> completeTransaction(TransactionSynchronization.STATUS_ROLLED_BACK));
+        verify(documentStorage).delete(anyString());
+    }
+
+    // GIVEN ein gültiges Dokument, aber RabbitMQ ist nicht erreichbar
+    // WHEN uploadDocument aufgerufen wird und die Transaktion zurückgerollt wird
+    // THEN wird die MessageQueueException weitergegeben und der Blob wieder gelöscht
     @Test
     void uploadDocument_WhenQueueUnavailable_ThrowsMessageQueueException() {
         DocumentModel inputModel = DocumentModel.builder().title("Upload Test").originalFilename("test.pdf").build();
@@ -281,6 +524,11 @@ class DocumentServiceTest {
 
         assertThrows(MessageQueueException.class,
                 () -> documentService.uploadDocument(inputModel, "content".getBytes()));
+        // Compensation: the rollback removes the file stored before
+        completeTransaction(TransactionSynchronization.STATUS_ROLLED_BACK);
+        ArgumentCaptor<String> storedKey = ArgumentCaptor.forClass(String.class);
+        verify(documentStorage).store(storedKey.capture(), any(byte[].class), any());
+        verify(documentStorage).delete(storedKey.getValue());
     }
 
     // GIVEN ein Null-DocumentModel beim Upload
@@ -353,5 +601,104 @@ class DocumentServiceTest {
     void update_WithNullChanges_ThrowsBusinessLayerException() {
         assertThrows(BusinessLayerException.class, () -> documentService.update(1L, null));
         verify(documentPersistenceService, never()).save(any());
+    }
+
+    // GIVEN ein Dokument im Status RECEIVED
+    // WHEN markOcrStarted aufgerufen wird
+    // THEN wechselt der Status mit Kommentar auf PROCESSING
+    @Test
+    void markOcrStarted_FromReceived_ChangesToProcessing() {
+        when(documentPersistenceService.findById(1L)).thenReturn(Optional.of(sampleModel));
+
+        documentService.markOcrStarted(1L);
+
+        verify(documentStatusHistoryService).changeStatus(1L, DocumentStatus.PROCESSING, "OCR started");
+    }
+
+    // GIVEN ein Dokument, das bereits im Status PROCESSING ist (wiederholtes STARTED-Event)
+    // WHEN markOcrStarted aufgerufen wird
+    // THEN wird das Event ignoriert und der Status nicht geändert
+    @Test
+    void markOcrStarted_WhenAlreadyProcessing_IgnoresDuplicate() {
+        DocumentModel processing = sampleModel.toBuilder().currentStatus(DocumentStatus.PROCESSING).build();
+        when(documentPersistenceService.findById(1L)).thenReturn(Optional.of(processing));
+
+        assertDoesNotThrow(() -> documentService.markOcrStarted(1L));
+
+        verifyNoInteractions(documentStatusHistoryService);
+    }
+
+    // GIVEN ein Dokument, das inzwischen gelöscht wurde
+    // WHEN markOcrStarted aufgerufen wird
+    // THEN wird das Event ohne Exception ignoriert
+    @Test
+    void markOcrStarted_WhenDocumentMissing_IgnoresEvent() {
+        when(documentPersistenceService.findById(99L)).thenReturn(Optional.empty());
+
+        assertDoesNotThrow(() -> documentService.markOcrStarted(99L));
+
+        verifyNoInteractions(documentStatusHistoryService);
+    }
+
+    // GIVEN ein Dokument im Status PROCESSING
+    // WHEN completeOcr mit dem erkannten Text aufgerufen wird
+    // THEN wird zuerst der Text gespeichert und danach der Status auf REVIEW_PENDING gesetzt
+    @Test
+    void completeOcr_FromProcessing_StoresTextThenChangesToReviewPending() {
+        DocumentModel processing = sampleModel.toBuilder().currentStatus(DocumentStatus.PROCESSING).build();
+        when(documentPersistenceService.findById(1L)).thenReturn(Optional.of(processing));
+
+        documentService.completeOcr(1L, "Hello World");
+
+        ArgumentCaptor<DocumentModel> captor = ArgumentCaptor.forClass(DocumentModel.class);
+        InOrder order = inOrder(documentPersistenceService, documentStatusHistoryService);
+        order.verify(documentPersistenceService).save(captor.capture());
+        order.verify(documentStatusHistoryService).changeStatus(1L, DocumentStatus.REVIEW_PENDING, "OCR completed");
+        assertEquals("Hello World", captor.getValue().getOcrText());
+        verify(documentStatusHistoryService, never()).changeStatus(1L, DocumentStatus.PROCESSING, "OCR started");
+    }
+
+    // GIVEN ein Dokument im Status RECEIVED (STARTED-Event fehlt oder kommt später)
+    // WHEN completeOcr aufgerufen wird
+    // THEN werden beide Schritte PROCESSING und REVIEW_PENDING nacheinander durchgeführt
+    @Test
+    void completeOcr_FromReceived_WalksBothSteps() {
+        when(documentPersistenceService.findById(1L)).thenReturn(Optional.of(sampleModel));
+
+        documentService.completeOcr(1L, "Hello World");
+
+        InOrder order = inOrder(documentStatusHistoryService);
+        order.verify(documentStatusHistoryService).changeStatus(1L, DocumentStatus.PROCESSING, "OCR started");
+        order.verify(documentStatusHistoryService).changeStatus(1L, DocumentStatus.REVIEW_PENDING, "OCR completed");
+    }
+
+    // GIVEN ein bereits abgelehntes Dokument (REJECTED)
+    // WHEN completeOcr aufgerufen wird
+    // THEN wird der Text gespeichert und der Status bleibt unverändert
+    @Test
+    void completeOcr_ForRejectedDocument_StoresTextAndKeepsStatus() {
+        DocumentModel rejected = sampleModel.toBuilder().currentStatus(DocumentStatus.REJECTED).build();
+        when(documentPersistenceService.findById(1L)).thenReturn(Optional.of(rejected));
+
+        assertDoesNotThrow(() -> documentService.completeOcr(1L, "Hello World"));
+
+        ArgumentCaptor<DocumentModel> captor = ArgumentCaptor.forClass(DocumentModel.class);
+        verify(documentPersistenceService).save(captor.capture());
+        assertEquals("Hello World", captor.getValue().getOcrText());
+        assertEquals(DocumentStatus.REJECTED, captor.getValue().getCurrentStatus());
+        verifyNoInteractions(documentStatusHistoryService);
+    }
+
+    // GIVEN ein Dokument, das inzwischen gelöscht wurde
+    // WHEN completeOcr aufgerufen wird
+    // THEN wird das Ergebnis ohne Exception ignoriert und nichts gespeichert
+    @Test
+    void completeOcr_WhenDocumentMissing_IgnoresResult() {
+        when(documentPersistenceService.findById(99L)).thenReturn(Optional.empty());
+
+        assertDoesNotThrow(() -> documentService.completeOcr(99L, "Hello World"));
+
+        verify(documentPersistenceService, never()).save(any());
+        verifyNoInteractions(documentStatusHistoryService);
     }
 }
