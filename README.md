@@ -62,14 +62,22 @@ This starts:
 8. `paperless-webui`: Web Server & React SPA on port `80` (reverse proxies `/api/` to `paperless-rest:8081`).
 
 ### Step 2: Access the Application
-- **Paperless Web UI**: Open your browser at [http://localhost/](http://localhost/)
-- **Backend Health Check**: [http://localhost/api/v1/health](http://localhost/api/v1/health) (or directly via [http://localhost:8081/api/v1/health](http://localhost:8081/api/v1/health))
-- **REST API Endpoints**: [http://localhost/api/v1/documents](http://localhost/api/v1/documents)
-- **Swagger UI** (generated API documentation, backend port only): [http://localhost:8081/swagger-ui/index.html](http://localhost:8081/swagger-ui/index.html)
-- **RabbitMQ Management UI**: [http://localhost:15672](http://localhost:15672)
-- **RustFS Console**: [http://localhost:9090](http://localhost:9090)
-- **Elasticsearch**: [http://localhost:9200](http://localhost:9200) (returns the version JSON)
-- **Kibana**: [http://localhost:5601](http://localhost:5601) (needs about a minute after the start)
+| Service | Port | URL | Login |
+|---|---|---|---|
+| Paperless Web UI (nginx, proxies `/api/` to the REST server) | 80 | [http://localhost/](http://localhost/) | none |
+| REST API via nginx | 80 | [http://localhost/api/v1/documents](http://localhost/api/v1/documents) | none |
+| Backend health check | 80 / 8081 | [http://localhost/api/v1/health](http://localhost/api/v1/health) | none |
+| Paperless REST server (direct) | 8081 | [http://localhost:8081](http://localhost:8081) | none |
+| Swagger UI (generated API documentation, backend port only) | 8081 | [http://localhost:8081/swagger-ui/index.html](http://localhost:8081/swagger-ui/index.html) | none |
+| RabbitMQ Management UI | 15672 | [http://localhost:15672](http://localhost:15672) | `RABBITMQ_DEFAULT_USER` / `RABBITMQ_DEFAULT_PASS` from `.env` |
+| RabbitMQ AMQP broker | 5672 | `amqp://localhost:5672` | same as above |
+| RustFS Console | 9090 | [http://localhost:9090](http://localhost:9090) | `RUSTFS_ACCESS_KEY` / `RUSTFS_SECRET_KEY` from `.env` |
+| RustFS S3 API | 9000 | [http://localhost:9000](http://localhost:9000) | same as above |
+| Elasticsearch (returns the version JSON) | 9200 | [http://localhost:9200](http://localhost:9200) | none (security disabled for local use) |
+| Kibana (needs about a minute after the start) | 5601 | [http://localhost:5601](http://localhost:5601) | none |
+| PostgreSQL (database `paperless`) | 5432 | `localhost:5432` | `POSTGRES_USER` / `POSTGRES_PASSWORD` from `.env` |
+
+The OCR worker (`paperless-ocr-worker`) has no port, it only talks to RabbitMQ, RustFS and Elasticsearch.
 
 ### Sprint 3 Check: Upload leads to a worker log entry
 Upload a PDF via the Web UI or the script below, then look at the worker log:
