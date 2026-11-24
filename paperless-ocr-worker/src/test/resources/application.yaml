@@ -17,6 +17,8 @@ paperless:
     dead-letter-exchange: paperless.dlx
     ocr-dead-letter-queue: paperless.ocr.dlq
     ocr-dead-letter-routing-key: document.ocr.dead
+    ocr-result-dead-letter-queue: paperless.ocr.result.dlq
+    ocr-result-dead-letter-routing-key: document.ocr.result.dead
   rustfs:
     endpoint: http://localhost:9000
     access-key: test-access-key

@@ -42,7 +42,10 @@ public class RabbitMqConfig {
     // Result queue and binding are declared identically in the OCR worker, so either app can start first
     @Bean
     public Queue ocrResultQueue(RabbitMqProperties properties) {
-        return new Queue(properties.ocrResultQueue(), true);
+        return QueueBuilder.durable(properties.ocrResultQueue())
+                .deadLetterExchange(properties.deadLetterExchange())
+                .deadLetterRoutingKey(properties.ocrResultDeadLetterRoutingKey())
+                .build();
     }
 
     @Bean
@@ -66,6 +69,19 @@ public class RabbitMqConfig {
     public Binding ocrDeadLetterBinding(Queue ocrDeadLetterQueue, DirectExchange deadLetterExchange,
                                         RabbitMqProperties properties) {
         return BindingBuilder.bind(ocrDeadLetterQueue).to(deadLetterExchange).with(properties.ocrDeadLetterRoutingKey());
+    }
+
+    // OCR results that could not be stored after all retries land here instead of being lost
+    @Bean
+    public Queue ocrResultDeadLetterQueue(RabbitMqProperties properties) {
+        return new Queue(properties.ocrResultDeadLetterQueue(), true);
+    }
+
+    @Bean
+    public Binding ocrResultDeadLetterBinding(Queue ocrResultDeadLetterQueue, DirectExchange deadLetterExchange,
+                                              RabbitMqProperties properties) {
+        return BindingBuilder.bind(ocrResultDeadLetterQueue).to(deadLetterExchange)
+                .with(properties.ocrResultDeadLetterRoutingKey());
     }
 
     @Bean

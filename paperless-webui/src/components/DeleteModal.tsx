@@ -61,8 +61,8 @@ export const DeleteModal: React.FC<DeleteModalProps> = ({
               marginTop: '0.5rem'
             }}
           >
-            This action will also cascade and remove all associated status history
-            audit records from PostgreSQL.
+            This also removes the status history, the stored PDF file and the recognized
+            text from the search.
           </p>
         </div>
         <div className="modal-footer">

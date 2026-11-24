@@ -84,6 +84,24 @@ class DocumentRepositoryTest {
         assertTrue(all.size() >= 2);
     }
 
+    // GIVEN zwei nacheinander gespeicherte Dokumente, das ältere wird danach geändert
+    // WHEN findAllByOrderByCreatedAtDescIdDesc aufgerufen wird
+    // THEN steht das neuere Dokument zuerst, die Änderung verschiebt die Reihenfolge nicht
+    @Test
+    void findAllByOrderByCreatedAtDescIdDesc_NewestFirstAndStableAfterUpdate() {
+        DocumentEntity older = documentRepository.saveAndFlush(DocumentEntity.builder().title("Older").build());
+        DocumentEntity newer = documentRepository.saveAndFlush(DocumentEntity.builder().title("Newer").build());
+        older.setTitle("Older renamed");
+        documentRepository.saveAndFlush(older);
+
+        List<Long> ids = documentRepository.findAllByOrderByCreatedAtDescIdDesc().stream()
+                .map(DocumentEntity::getId)
+                .filter(id -> id.equals(older.getId()) || id.equals(newer.getId()))
+                .toList();
+
+        assertEquals(List.of(newer.getId(), older.getId()), ids);
+    }
+
     // GIVEN ein gespeichertes Dokument in der Datenbank
     // WHEN der Titel aktualisiert und gespeichert wird
     // THEN werden die Änderungen persistiert und das Modifizierungsdatum gesetzt

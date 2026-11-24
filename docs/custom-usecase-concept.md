@@ -13,7 +13,7 @@
 
 ### B. DocumentStatusHistory Entity
 - `id`: Long (PK, auto-increment)
-- `documentId`: Long (FK to documents table, not null)
+- `documentId`: Long (reference to `documents.id`, indexed, not null, no foreign key)
 - `status`: String / Enum (new state)
 - `previousStatus`: String / Enum (state before this change, null on initial upload)
 - `timestamp`: OffsetDateTime (timestamp of transition, not null)
@@ -38,7 +38,7 @@
 - Rule 1 (Initial State): Uploading a document automatically assigns status `RECEIVED`.
 - Rule 2 (Initial History): Creating a document automatically writes the first history entry (`status: RECEIVED, previousStatus: null, comment: "Document file uploaded"`).
 - Rule 3 (Immutability): Status history entries are append-only. No update or manual delete allowed (audit trail integrity).
-- Rule 4 (Lifecycle Binding): When a document is deleted, all associated status history entries are cascade-deleted.
+- Rule 4 (Lifecycle Binding): When a document is deleted, all associated status history entries are deleted in the same transaction.
 
 ### Logic
 - `changeStatus(documentId, targetStatus, comment)`:
@@ -56,7 +56,7 @@
 ### Persistence
 - PostgreSQL Tables:
   - `documents`: contains `current_status` column.
-  - `document_status_histories`: table with foreign key `document_id REFERENCES documents(id) ON DELETE CASCADE`.
+  - `document_status_histories`: table with the column `document_id` (indexed, no foreign key). `DocumentServiceImpl.deleteById` deletes the history rows and the document in one transaction.
 - Spring Data JPA:
   - `DocumentRepository`: standard CRUD + update status.
   - `DocumentStatusHistoryRepository`: derived query `List<DocumentStatusHistory> findByDocumentIdOrderByTimestampDesc(Long documentId)`.
@@ -72,7 +72,7 @@
    - REST server sends an OCR job (`OcrMessage`) to RabbitMQ queue `paperless.ocr.queue`.
 
 2. **Step 2: Processing (OCR / Inspection)**
-   - `paperless-ocr-worker` receives the OCR job from the queue (Sprint 3: only logged, Sprint 4: real OCR).
+   - `paperless-ocr-worker` receives the OCR job from the queue, runs Ghostscript and Tesseract and reports `STARTED` and `COMPLETED` back, which moves the status automatically.
    - Status transitions to `PROCESSING`.
    - History entry recorded.
 
@@ -97,4 +97,4 @@
 - `POST /api/v1/documents/{id}/status`: Transition document to new status (validates lifecycle graph).
 - `GET /api/v1/documents/{id}/history`: Fetch full audit history for document (chronological descending).
 - `GET /api/v1/documents/status-history/{id}`: Fetch single status history record by its ID.
-- `DELETE /api/v1/documents/{id}`: Delete document and cascade delete all its history records.
+- `DELETE /api/v1/documents/{id}`: Delete document, its history records, its file in RustFS and its search index entry.

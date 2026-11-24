@@ -60,6 +60,8 @@ paperless:
     dead-letter-exchange: paperless.dlx
     ocr-dead-letter-queue: paperless.ocr.dlq
     ocr-dead-letter-routing-key: document.ocr.dead
+    ocr-result-dead-letter-queue: paperless.ocr.result.dlq
+    ocr-result-dead-letter-routing-key: document.ocr.result.dead
   rustfs:
     endpoint: ${RUSTFS_ENDPOINT:http://localhost:9000}
     access-key: ${RUSTFS_ACCESS_KEY}
@@ -78,6 +80,13 @@ resilience4j:
         minimum-number-of-calls: 5
         failure-rate-threshold: 50
         wait-duration-in-open-state: 10s
+
+# Title and version shown in the Swagger UI (same as docs/openapi.yaml)
+springdoc:
+  open-api:
+    info:
+      title: Paperless REST API
+      version: 0.4.0
 
 logging:
   level:

@@ -39,7 +39,7 @@ public class DocumentPersistenceService {
 
     @Transactional(readOnly = true)
     public List<DocumentModel> findAll() {
-        return documentEntityMapper.toModelList(documentRepository.findAll());
+        return documentEntityMapper.toModelList(documentRepository.findAllByOrderByCreatedAtDescIdDesc());
     }
 
     @Transactional(readOnly = true)

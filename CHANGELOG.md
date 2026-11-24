@@ -4,6 +4,40 @@ All notable changes to the Paperless Document Management System will be document
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.0] - 2026-11-24
+### Added
+- RustFS (S3 compatible object storage), Elasticsearch and Kibana containers in `docker-compose.yml`, RustFS keys in `.env`.
+- Uploaded PDFs are stored in RustFS (AWS SDK for Java v2, bucket `paperless-documents`, key `UUID.pdf` in `storagePath`). Deleting a document also deletes its file. Storage failures return `503`.
+- OCR worker: loads the PDF from RustFS, converts it with Ghostscript and recognizes the text with Tesseract (Tess4J). The worker image is based on Ubuntu 26.04 with Tesseract and Ghostscript installed.
+- The worker indexes the OCR text in Elasticsearch (index `paperless-documents`, id = document id).
+- Result channel: the worker sends `OcrResultMessage` (`STARTED`, `COMPLETED` with the text) on `paperless.ocr.result.queue`. The REST server stores `ocrText` and moves the status `RECEIVED` -> `PROCESSING` -> `REVIEW_PENDING`.
+- Full-text and fuzzy search through Elasticsearch on content and filename, plus the title search, results loaded from PostgreSQL.
+- Stability patterns: timeouts for RustFS and Elasticsearch, compensation that deletes the stored file when the upload transaction rolls back, Resilience4j circuit breaker with title search fallback, dead-letter queues `paperless.ocr.dlq` for failed OCR jobs and `paperless.ocr.result.dlq` for OCR results the REST server could not store.
+- Web UI: recognized text in the details, status refreshes by itself while OCR runs, title edit, all allowed status transitions.
+- 70% line coverage gate for the worker, real OCR test in CI.
+- `tests/sprint4-search-check.ps1` and `tests/sample-documents/HelloWorld.pdf`.
+
+### Changed
+- List and search responses leave out `ocrText`, only `GET /api/v1/documents/{id}` contains it.
+- Upload accepts a file only if its name ends with `.pdf` and its content starts with the PDF signature `%PDF-` (before: name or content type was enough), otherwise `415`.
+- The open details dialog refreshes the document and its history every 5 seconds while OCR runs. An unsaved title is kept when the status changes.
+- `GET /api/v1/documents` returns the documents sorted by upload time, newest first. Before, an edited document moved to another position.
+- Search placeholder and upload message in the web UI mention the content search.
+- Web UI shows readable status names (`Review Pending` instead of `REVIEW_PENDING`), toasts appear below the header instead of over the table, the delete dialog names everything that is removed.
+- Swagger UI shows the title `Paperless REST API` and version `0.4.0` (`springdoc.open-api.info` in `application.yaml`).
+- Hibernate parameter logging set from `TRACE` to `INFO`.
+- Spring Boot 4.2.0, Node 26, React 19 and the latest GitHub Actions.
+
+### Removed
+- Unused record `ElasticsearchConfig` (standard `spring.elasticsearch.*` properties instead). The old `RustFsConfig` record is now the validated `RustFsProperties`, `RustFsConfig` builds the `S3Client`.
+- Unused `getDocumentStatus` in the web UI (it called an endpoint that does not exist).
+
+### Fixed
+- A hanging or interrupted Ghostscript process is killed instead of running on.
+- nginx waits up to 130 s for the REST server, so a slow storage call ends with the backend's `503` instead of a `504` from nginx.
+- `tests/document-upload-tests.ps1` used `-o /dev/null`, which does not exist on Windows, and ended with curl exit code 23.
+- `docs/custom-usecase-concept.md` described a foreign key that does not exist.
+
 ## [0.3.1] - 2026-11-13
 ### Added
 - Configuration through `.env` (template: `.env.example`): `docker-compose.yml` and both `application.yaml` files reference variables. CI copies `.env.example` before `docker compose build`.

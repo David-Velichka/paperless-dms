@@ -22,7 +22,7 @@ class RabbitOcrResultPublisherTest {
 
     private static final RabbitMqProperties PROPERTIES =
             new RabbitMqProperties("test.exchange", "test.queue", "test.result.queue", "test.result",
-                    "test.dlx", "test.dlq", "test.dead");
+                    "test.dlx", "test.dlq", "test.dead", "test.result.dlq", "test.result.dead");
 
     @Mock
     private RabbitTemplate rabbitTemplate;

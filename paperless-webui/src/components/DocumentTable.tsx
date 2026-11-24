@@ -1,6 +1,6 @@
 import React from 'react';
 import { DocumentItem } from '../types';
-import { formatBytes, formatDate, getDocStatus } from '../utils/formatters';
+import { formatBytes, formatDate, formatStatus, getDocStatus } from '../utils/formatters';
 
 interface DocumentTableProps {
   documents: DocumentItem[];
@@ -55,7 +55,7 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({
                   <td>{formatBytes(doc.fileSize)}</td>
                   <td>{formatDate(doc.createdAt)}</td>
                   <td>
-                    <span className={`badge badge-${docStatus}`}>{docStatus}</span>
+                    <span className={`badge badge-${docStatus}`}>{formatStatus(docStatus)}</span>
                   </td>
                   <td>
                     <div className="action-buttons">
@@ -100,7 +100,7 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({
           </div>
           <div className="empty-text">No documents found</div>
           <div className="empty-subtext">
-            Upload a PDF document to begin archiving and managing files.
+            Change the search or status filter, or upload a PDF document.
           </div>
         </div>
       )}

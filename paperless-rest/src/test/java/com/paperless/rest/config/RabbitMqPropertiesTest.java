@@ -36,7 +36,9 @@ class RabbitMqPropertiesTest {
                         "paperless.rabbitmq.ocr-result-routing-key=result-key",
                         "paperless.rabbitmq.dead-letter-exchange=dlx",
                         "paperless.rabbitmq.ocr-dead-letter-queue=dlq",
-                        "paperless.rabbitmq.ocr-dead-letter-routing-key=dead-key")
+                        "paperless.rabbitmq.ocr-dead-letter-routing-key=dead-key",
+                        "paperless.rabbitmq.ocr-result-dead-letter-queue=result-dlq",
+                        "paperless.rabbitmq.ocr-result-dead-letter-routing-key=result-dead-key")
                 .run(context -> {
                     RabbitMqProperties properties = context.getBean(RabbitMqProperties.class);
                     assertNotNull(properties);
@@ -48,6 +50,8 @@ class RabbitMqPropertiesTest {
                     assertEquals("dlx", properties.deadLetterExchange());
                     assertEquals("dlq", properties.ocrDeadLetterQueue());
                     assertEquals("dead-key", properties.ocrDeadLetterRoutingKey());
+                    assertEquals("result-dlq", properties.ocrResultDeadLetterQueue());
+                    assertEquals("result-dead-key", properties.ocrResultDeadLetterRoutingKey());
                 });
     }
 
@@ -66,7 +70,9 @@ class RabbitMqPropertiesTest {
                         "paperless.rabbitmq.ocr-result-routing-key=result-key",
                         "paperless.rabbitmq.dead-letter-exchange=dlx",
                         "paperless.rabbitmq.ocr-dead-letter-queue=dlq",
-                        "paperless.rabbitmq.ocr-dead-letter-routing-key=dead-key")
+                        "paperless.rabbitmq.ocr-dead-letter-routing-key=dead-key",
+                        "paperless.rabbitmq.ocr-result-dead-letter-queue=result-dlq",
+                        "paperless.rabbitmq.ocr-result-dead-letter-routing-key=result-dead-key")
                 .run(context -> {
                     assertNotNull(context.getStartupFailure());
                     assertTrue(context.getStartupFailure().getMessage().contains("paperless.rabbitmq"));

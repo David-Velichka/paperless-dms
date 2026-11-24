@@ -97,7 +97,7 @@ class DocumentPersistenceServiceTest {
     // THEN wird die Liste aller gemappten DocumentModels zurückgegeben
     @Test
     void findAll_ReturnsMappedModelList() {
-        when(documentRepository.findAll()).thenReturn(List.of(sampleEntity));
+        when(documentRepository.findAllByOrderByCreatedAtDescIdDesc()).thenReturn(List.of(sampleEntity));
         when(documentEntityMapper.toModelList(List.of(sampleEntity))).thenReturn(List.of(sampleModel));
 
         List<DocumentModel> result = persistenceService.findAll();

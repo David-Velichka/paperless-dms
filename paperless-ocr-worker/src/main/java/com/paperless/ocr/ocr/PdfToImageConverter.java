@@ -27,10 +27,10 @@ public class PdfToImageConverter {
                 "-sOutputFile=" + targetDir.resolve("page-%03d.png"), pdf.toString())
                 .redirectErrorStream(true)
                 .redirectOutput(gsLog.toFile());
+        Process process = null;
         try {
-            Process process = processBuilder.start();
+            process = processBuilder.start();
             if (!process.waitFor(TIMEOUT_SECONDS, TimeUnit.SECONDS)) {
-                process.destroyForcibly();
                 throw new OcrException("Ghostscript did not finish within " + TIMEOUT_SECONDS + " seconds");
             }
             if (process.exitValue() != 0) {
@@ -48,6 +48,11 @@ public class PdfToImageConverter {
         } catch (InterruptedException ex) {
             Thread.currentThread().interrupt();
             throw new OcrException("Ghostscript was interrupted", ex);
+        } finally {
+            // Kill a hanging or interrupted gs, so no Ghostscript process keeps running after the job
+            if (process != null && process.isAlive()) {
+                process.destroyForcibly();
+            }
         }
     }
 }

@@ -23,6 +23,14 @@ export function formatDate(isoString: string | null | undefined): string {
   return date.toLocaleString();
 }
 
+// Readable status label, e.g. REVIEW_PENDING -> Review Pending
+export function formatStatus(status: DocumentStatus): string {
+  return status
+    .split('_')
+    .map((word) => word.charAt(0) + word.slice(1).toLowerCase())
+    .join(' ');
+}
+
 export function getDocStatus(doc: DocumentItem): DocumentStatus {
   return doc.currentStatus || 'RECEIVED';
 }

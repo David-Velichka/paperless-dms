@@ -14,7 +14,7 @@ import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 /**
  * Real run with Ghostscript and Tesseract. Skipped on machines where they are not installed (for example Windows),
- * runs in the Docker image and in CI.
+ * runs in CI.
  */
 class TesseractOcrEngineTest {
 

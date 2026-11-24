@@ -3,6 +3,7 @@ import { DocumentItem, DocumentStatus, DocumentStatusHistory } from '../types';
 import {
   formatBytes,
   formatDate,
+  formatStatus,
   getDocStatus,
   STATUS_TRANSITIONS
 } from '../utils/formatters';
@@ -17,6 +18,7 @@ interface DetailModalProps {
     targetStatus: DocumentStatus,
     comment: string
   ) => Promise<void>;
+  onUpdateTitle: (docId: number, title: string) => Promise<void>;
 }
 
 export const DetailModal: React.FC<DetailModalProps> = ({
@@ -24,22 +26,39 @@ export const DetailModal: React.FC<DetailModalProps> = ({
   history,
   isLoadingHistory,
   onClose,
-  onUpdateStatus
+  onUpdateStatus,
+  onUpdateTitle
 }) => {
   const [selectedNextStatus, setSelectedNextStatus] = useState<DocumentStatus | ''>('');
   const [comment, setComment] = useState('');
   const [validationError, setValidationError] = useState<string | null>(null);
   const [isUpdating, setIsUpdating] = useState(false);
+  const [titleInput, setTitleInput] = useState('');
+  const [titleError, setTitleError] = useState<string | null>(null);
+  const [isSavingTitle, setIsSavingTitle] = useState(false);
 
+  const documentId = document ? document.id : null;
+  const currentStatus = document ? getDocStatus(document) : null;
+
+  // Another document: start with empty inputs, so a refresh or status change keeps what the user typed
   useEffect(() => {
     if (document) {
-      const docStatus = getDocStatus(document);
-      const nextStates = STATUS_TRANSITIONS[docStatus] || [];
-      setSelectedNextStatus(nextStates.length > 0 ? nextStates[0] : '');
+      setTitleInput(document.title || '');
+      setTitleError(null);
       setComment('');
       setValidationError(null);
     }
-  }, [document]);
+  }, [documentId]);
+
+  // New status: keep the selected transition if it is still allowed, otherwise offer the first allowed one
+  useEffect(() => {
+    if (currentStatus) {
+      const allowed = STATUS_TRANSITIONS[currentStatus] || [];
+      setSelectedNextStatus((prev) =>
+        prev !== '' && allowed.includes(prev) ? prev : (allowed.length > 0 ? allowed[0] : '')
+      );
+    }
+  }, [documentId, currentStatus]);
 
   if (!document) return null;
 
@@ -60,6 +79,7 @@ export const DetailModal: React.FC<DetailModalProps> = ({
     setIsUpdating(true);
     try {
       await onUpdateStatus(document.id, selectedNextStatus, comment.trim());
+      setComment('');
     } catch (err: unknown) {
       if (err instanceof Error) {
         setValidationError(err.message);
@@ -68,6 +88,28 @@ export const DetailModal: React.FC<DetailModalProps> = ({
       }
     } finally {
       setIsUpdating(false);
+    }
+  };
+
+  const handleSaveTitle = async () => {
+    const trimmed = titleInput.trim();
+    if (!trimmed) {
+      setTitleError('Title must not be blank.');
+      return;
+    }
+    if (trimmed.length > 255) {
+      setTitleError('Title must not exceed 255 characters.');
+      return;
+    }
+
+    setTitleError(null);
+    setIsSavingTitle(true);
+    try {
+      await onUpdateTitle(document.id, trimmed);
+    } catch (err: unknown) {
+      setTitleError(err instanceof Error ? err.message : 'Failed to update title.');
+    } finally {
+      setIsSavingTitle(false);
     }
   };
 
@@ -131,7 +173,7 @@ export const DetailModal: React.FC<DetailModalProps> = ({
               </div>
               <div style={{ marginTop: '2px' }}>
                 <span id="detail-status-badge" className={`badge badge-${docStatus}`}>
-                  {docStatus}
+                  {formatStatus(docStatus)}
                 </span>
               </div>
             </div>
@@ -202,6 +244,51 @@ export const DetailModal: React.FC<DetailModalProps> = ({
             </div>
           </div>
 
+          {/* Title edit */}
+          <div id="title-edit-container" style={{ marginBottom: '1.5rem' }}>
+            <div className="form-group" style={{ marginBottom: '0.75rem' }}>
+              <label htmlFor="title-input" className="form-label">
+                Edit Title
+              </label>
+              <input
+                type="text"
+                id="title-input"
+                className="form-control"
+                value={titleInput}
+                onChange={(e) => {
+                  setTitleInput(e.target.value);
+                  setTitleError(null);
+                }}
+              />
+            </div>
+            {titleError && (
+              <div
+                id="title-error-alert"
+                style={{
+                  padding: '0.625rem 0.75rem',
+                  borderRadius: 'var(--radius-sm)',
+                  backgroundColor: 'rgba(239, 68, 68, 0.15)',
+                  border: '1px solid rgba(239, 68, 68, 0.3)',
+                  color: '#f87171',
+                  fontSize: '0.8125rem',
+                  marginBottom: '0.75rem'
+                }}
+              >
+                {titleError}
+              </div>
+            )}
+            <button
+              type="button"
+              id="btn-save-title"
+              className="btn btn-secondary btn-sm"
+              style={{ width: '100%', justifyContent: 'center' }}
+              disabled={isSavingTitle || titleInput.trim() === (document.title || '')}
+              onClick={handleSaveTitle}
+            >
+              {isSavingTitle ? 'Saving...' : 'Save Title'}
+            </button>
+          </div>
+
           {/* Recognized text from the OCR worker (read-only) */}
           <div id="ocr-text-container" style={{ marginBottom: '1.5rem' }}>
             <h3
@@ -237,7 +324,7 @@ export const DetailModal: React.FC<DetailModalProps> = ({
               >
                 {docStatus === 'RECEIVED' || docStatus === 'PROCESSING'
                   ? 'Text recognition is still running...'
-                  : 'No text recognized.'}
+                  : 'No recognized text available.'}
               </div>
             )}
           </div>
@@ -269,7 +356,7 @@ export const DetailModal: React.FC<DetailModalProps> = ({
                 >
                   {nextStates.map((status) => (
                     <option key={status} value={status}>
-                      Transition to: {status}
+                      Transition to: {formatStatus(status)}
                     </option>
                   ))}
                 </select>
@@ -343,7 +430,7 @@ export const DetailModal: React.FC<DetailModalProps> = ({
                     <div className="timeline-dot" />
                     <div className="timeline-header">
                       <span className={`badge badge-${item.status}`}>
-                        {item.status}
+                        {formatStatus(item.status)}
                       </span>
                       <span className="timeline-time">{formatDate(item.timestamp)}</span>
                     </div>

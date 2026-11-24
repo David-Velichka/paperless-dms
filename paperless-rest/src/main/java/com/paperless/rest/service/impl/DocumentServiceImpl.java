@@ -154,7 +154,9 @@ public class DocumentServiceImpl implements DocumentService {
     }
 
     // S3 has no transactions: the file is stored first, then metadata, history and OCR message are saved in one
-    // database transaction. A rollback callback on that transaction deletes the file again, also when the commit fails.
+    // database transaction. A callback deletes the file again whenever Spring reports a rollback, also for a commit
+    // that fails and is rolled back. With an unknown commit outcome the file is kept on purpose: the row may exist,
+    // and a row without its file is worse than an unused file.
     @Override
     @Transactional
     public DocumentModel uploadDocument(DocumentModel documentModel, byte[] content) {

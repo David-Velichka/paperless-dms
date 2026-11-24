@@ -204,7 +204,7 @@ class DocumentControllerTest {
     @Test
     void uploadDocument_WithValidFile_ReturnsCreated() throws Exception {
         MockMultipartFile file = new MockMultipartFile(
-                "file", "sample.pdf", "application/pdf", "Dummy PDF content".getBytes());
+                "file", "sample.pdf", "application/pdf", "%PDF-1.4 dummy content".getBytes());
 
         DocumentModel savedModel = DocumentModel.builder()
                 .id(42L)
@@ -267,6 +267,36 @@ class DocumentControllerTest {
         verify(documentService, never()).uploadDocument(any(), any());
     }
 
+    // GIVEN eine .exe-Datei, die sich als application/pdf ausgibt und mit der PDF-Signatur beginnt
+    // WHEN POST /api/v1/documents/upload aufgerufen wird
+    // THEN wird der HTTP-Status 415 zurückgegeben, weil der Dateiname nicht auf .pdf endet
+    @Test
+    @DisplayName("upload with a PDF content type but a non-PDF file name returns 415")
+    void uploadDocument_WithPdfContentTypeButWrongName_ReturnsUnsupportedMediaType() throws Exception {
+        MockMultipartFile file = new MockMultipartFile(
+                "file", "evil.exe", "application/pdf", "%PDF-1.4 dummy content".getBytes());
+
+        mockMvc.perform(multipart("/api/v1/documents/upload").file(file))
+                .andExpect(status().isUnsupportedMediaType())
+                .andExpect(jsonPath("$.type").value("urn:paperless:problem:unsupported-file-type"));
+        verify(documentService, never()).uploadDocument(any(), any());
+    }
+
+    // GIVEN eine Datei mit Endung .pdf, deren Inhalt aber reiner Text ist
+    // WHEN POST /api/v1/documents/upload aufgerufen wird
+    // THEN wird der HTTP-Status 415 zurückgegeben, weil die PDF-Signatur fehlt
+    @Test
+    @DisplayName("upload of a .pdf file without PDF signature returns 415")
+    void uploadDocument_WithPdfNameButTextContent_ReturnsUnsupportedMediaType() throws Exception {
+        MockMultipartFile file = new MockMultipartFile(
+                "file", "fake.pdf", "application/pdf", "Just some text".getBytes());
+
+        mockMvc.perform(multipart("/api/v1/documents/upload").file(file))
+                .andExpect(status().isUnsupportedMediaType())
+                .andExpect(jsonPath("$.type").value("urn:paperless:problem:unsupported-file-type"));
+        verify(documentService, never()).uploadDocument(any(), any());
+    }
+
     // GIVEN eine Datei mit Endung in Großbuchstaben (.PDF) und einem allgemeinen Content-Type
     // WHEN POST /api/v1/documents/upload aufgerufen wird
     // THEN wird die Datei als PDF akzeptiert (HTTP-Status 201 Created)
@@ -274,7 +304,7 @@ class DocumentControllerTest {
     @DisplayName("upload accepts a .PDF file name in any case")
     void uploadDocument_WithUpperCasePdfExtension_ReturnsCreated() throws Exception {
         MockMultipartFile file = new MockMultipartFile(
-                "file", "SCAN.PDF", "application/octet-stream", "Dummy PDF content".getBytes());
+                "file", "SCAN.PDF", "application/octet-stream", "%PDF-1.4 dummy content".getBytes());
         DocumentModel savedModel = DocumentModel.builder().id(7L).title("SCAN.PDF").build();
 
         when(documentService.uploadDocument(any(DocumentModel.class), any(byte[].class))).thenReturn(savedModel);
@@ -318,7 +348,7 @@ class DocumentControllerTest {
     @Test
     void uploadDocument_WhenQueueUnavailable_ReturnsServiceUnavailable() throws Exception {
         MockMultipartFile file = new MockMultipartFile(
-                "file", "sample.pdf", "application/pdf", "Dummy PDF content".getBytes());
+                "file", "sample.pdf", "application/pdf", "%PDF-1.4 dummy content".getBytes());
 
         when(documentService.uploadDocument(any(DocumentModel.class), any(byte[].class)))
                 .thenThrow(new MessageQueueException("Document 1 could not be queued for OCR"));
@@ -336,7 +366,7 @@ class DocumentControllerTest {
     @Test
     void uploadDocument_WhenStorageUnavailable_ReturnsServiceUnavailable() throws Exception {
         MockMultipartFile file = new MockMultipartFile(
-                "file", "sample.pdf", "application/pdf", "Dummy PDF content".getBytes());
+                "file", "sample.pdf", "application/pdf", "%PDF-1.4 dummy content".getBytes());
 
         when(documentService.uploadDocument(any(DocumentModel.class), any(byte[].class)))
                 .thenThrow(new StorageException("Document file could not be stored", new RuntimeException("down")));

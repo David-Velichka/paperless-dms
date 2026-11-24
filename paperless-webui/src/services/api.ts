@@ -86,6 +86,23 @@ export const API = {
     return res.json();
   },
 
+  async updateDocumentTitle(id: number, title: string): Promise<DocumentItem> {
+    const res = await fetch(`${this.BASE_URL}/documents/${id}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: 'application/json'
+      },
+      body: JSON.stringify({ title })
+    });
+
+    if (!res.ok) {
+      const errorMessage = await this.parseError(res, 'Title update failed');
+      throw new Error(errorMessage);
+    }
+    return res.json();
+  },
+
   async deleteDocument(id: number): Promise<boolean> {
     const res = await fetch(`${this.BASE_URL}/documents/${id}`, {
       method: 'DELETE'

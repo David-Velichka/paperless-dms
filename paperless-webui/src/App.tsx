@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { DocumentItem, DocumentStatus, DocumentStatusHistory, ToastMessage } from './types';
 import { API } from './services/api';
-import { getDocStatus } from './utils/formatters';
+import { formatStatus, getDocStatus } from './utils/formatters';
 import { Header } from './components/Header';
 import { StatsGrid } from './components/StatsGrid';
 import { ActionBar } from './components/ActionBar';
@@ -73,6 +73,39 @@ export const App: React.FC = () => {
     return () => clearInterval(timer);
   }, [isOcrRunning, isModalOpen, searchQuery, loadDocuments]);
 
+  // The open details dialog also follows the OCR: reload its document and history every 5 seconds
+  const openDocId = selectedDoc ? selectedDoc.id : null;
+  // Id of the document in the open dialog, read by async handlers so a late answer cannot reopen a closed dialog
+  const openDocIdRef = useRef<number | null>(null);
+  openDocIdRef.current = openDocId;
+  const openDocStatus = selectedDoc ? getDocStatus(selectedDoc) : null;
+  const isOpenDocOcrRunning = openDocStatus === 'RECEIVED' || openDocStatus === 'PROCESSING';
+
+  useEffect(() => {
+    if (openDocId === null || !isOpenDocOcrRunning) return;
+
+    // Set to true when the dialog closes or switches, so a late answer is ignored and cannot reopen it
+    let cancelled = false;
+    const timer = setInterval(async () => {
+      try {
+        const [doc, hist] = await Promise.all([
+          API.getDocumentById(openDocId),
+          API.getDocumentHistory(openDocId)
+        ]);
+        if (!cancelled) {
+          setSelectedDoc(doc);
+          setHistory(hist);
+        }
+      } catch {
+        // The next interval tries again
+      }
+    }, 5000);
+    return () => {
+      cancelled = true;
+      clearInterval(timer);
+    };
+  }, [openDocId, isOpenDocOcrRunning]);
+
   // Debounce search query changes
   useEffect(() => {
     const handler = setTimeout(() => {
@@ -140,16 +173,33 @@ export const App: React.FC = () => {
   ) => {
     try {
       const updated = await API.updateDocumentStatus(docId, targetStatus, comment);
-      addToast(`Document status transitioned to ${updated.status}`);
-      // Refresh current document view
+      addToast(`Document status transitioned to ${formatStatus(updated.status)}`);
+      // Refresh the document view, but only if the dialog still shows this document (it may have been closed)
       const doc = await API.getDocumentById(docId);
-      setSelectedDoc(doc);
       const hist = await API.getDocumentHistory(docId);
-      setHistory(hist);
+      if (openDocIdRef.current === docId) {
+        setSelectedDoc(doc);
+        setHistory(hist);
+      }
       // Refresh list
       await loadDocuments(searchQuery);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Status transition rejected';
+      addToast(msg, 'error');
+      throw err;
+    }
+  }, [addToast, loadDocuments, searchQuery]);
+
+  const handleUpdateTitle = useCallback(async (docId: number, title: string) => {
+    try {
+      const updated = await API.updateDocumentTitle(docId, title);
+      addToast(`Title changed to "${updated.title}"`);
+      if (openDocIdRef.current === docId) {
+        setSelectedDoc(updated);
+      }
+      await loadDocuments(searchQuery);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Title update failed';
       addToast(msg, 'error');
       throw err;
     }
@@ -208,6 +258,7 @@ export const App: React.FC = () => {
         isLoadingHistory={isLoadingHistory}
         onClose={() => setSelectedDoc(null)}
         onUpdateStatus={handleUpdateStatus}
+        onUpdateTitle={handleUpdateTitle}
       />
 
       <DeleteModal

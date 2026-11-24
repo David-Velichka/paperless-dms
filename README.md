@@ -9,8 +9,12 @@ A lightweight Document Management System developed as part of the **Software Eng
 - **Security**: Spring Security 7.1 (Stateless `SecurityFilterChain`)
 - **Persistence**: Spring Data JPA / Hibernate ORM
 - **Database**: PostgreSQL 16 (Alpine)
-- **Message Broker**: RabbitMQ 4 (Spring AMQP, JSON messages)
-- **Object Mapping**: MapStruct 1.6.2 (compile-time mappers, pure functions)
+- **Message Broker**: RabbitMQ 4 (Spring AMQP, JSON messages, dead-letter queues for failed OCR jobs and OCR results)
+- **Object Storage**: RustFS 1.0.6 (S3 compatible, accessed with the AWS SDK for Java v2)
+- **OCR**: Tesseract (Tess4J 5.21.0) with Ghostscript for the PDF to image conversion
+- **Search**: Elasticsearch 9.5.6 (Spring Data Elasticsearch, full-text and fuzzy search), Kibana 9.5.6
+- **Stability**: Resilience4j circuit breaker with fallback on the search, timeouts on all outbound clients
+- **Object Mapping**: MapStruct 1.6.3 (compile-time mappers, pure functions)
 - **Frontend SPA**: React 19, TypeScript, Vite
 - **Web Server / Reverse Proxy**: Nginx Alpine
 - **Testing**: JUnit 5, Mockito, MockMvc, DataJpaTest (with H2 in PostgreSQL compatibility mode), JaCoCo coverage
@@ -53,8 +57,8 @@ This starts:
 3. `paperless-rustfs`: RustFS object storage (S3 API) on port `9000`, web console on port `9090` (login: `RUSTFS_ACCESS_KEY` / `RUSTFS_SECRET_KEY` from your `.env`).
 4. `paperless-elasticsearch`: Elasticsearch (single node, security disabled for local use) on port `9200`.
 5. `paperless-kibana`: Kibana on port `5601` (waits until Elasticsearch is healthy).
-6. `paperless-rest`: Backend REST API on port `8081` (waits until PostgreSQL and RabbitMQ are healthy).
-7. `paperless-ocr-worker`: OCR worker consuming `paperless.ocr.queue` (waits until RabbitMQ and RustFS are healthy).
+6. `paperless-rest`: Backend REST API on port `8081` (waits until PostgreSQL, RabbitMQ, RustFS and Elasticsearch are healthy).
+7. `paperless-ocr-worker`: OCR worker consuming `paperless.ocr.queue`: loads the PDF from RustFS, runs Ghostscript and Tesseract, indexes the text in Elasticsearch and reports the result back on `paperless.ocr.result.queue` (waits until RabbitMQ, RustFS and Elasticsearch are healthy).
 8. `paperless-webui`: Web Server & React SPA on port `80` (reverse proxies `/api/` to `paperless-rest:8081`).
 
 ### Step 2: Access the Application
@@ -73,8 +77,13 @@ Upload a PDF via the Web UI or the script below, then look at the worker log:
 ```bash
 .\tests\sprint3-queue-check.ps1
 docker compose logs paperless-ocr-worker
-# ... Received OCR job documentId=1 filename='sample.pdf' contentType=application/pdf uploadedAt=...
+# ... Received OCR job documentId=1 filename='sample.pdf' contentType=application/pdf uploadedAt=... storageKey=...
 ```
+
+### Sprint 4 Check: Upload HelloWorld.pdf and search "Hello"
+1. Open [http://localhost/](http://localhost/) and upload `tests/sample-documents/HelloWorld.pdf`.
+2. Wait until the status badge shows `Review Pending` (about 10 to 30 seconds, the list refreshes by itself).
+3. Type `Hello` into the search box: the document is listed. The search is fuzzy, `Helo` finds it as well.
 
 ### Step 3: Verify Service Status
 ```bash
@@ -82,7 +91,13 @@ docker compose ps
 ```
 All containers should report `running` (postgres, rabbitmq, rustfs and elasticsearch `healthy`).
 
-**Existing RabbitMQ volume:** `paperless.ocr.queue` is declared with a dead-letter exchange (`paperless.dlx`, failed jobs land in `paperless.ocr.dlq`). A broker that still holds the old queue without these arguments refuses the new declaration with `PRECONDITION_FAILED`, and `paperless-rest` and `paperless-ocr-worker` do not start. Delete `paperless.ocr.queue` once in the RabbitMQ Management UI (Queues and Streams, Delete) or run `docker compose down -v`. Fresh clones are not affected.
+**Existing RabbitMQ volume:** `paperless.ocr.queue` and `paperless.ocr.result.queue` are declared with a dead-letter exchange (`paperless.dlx`). Failed OCR jobs land in `paperless.ocr.dlq`, OCR results the REST server could not store land in `paperless.ocr.result.dlq`. A broker that still holds one of the old queues without these arguments refuses the new declaration with `PRECONDITION_FAILED`, and `paperless-rest` and `paperless-ocr-worker` do not start. Delete both queues once in the RabbitMQ Management UI (Queues and Streams, Delete) or run `docker compose down -v`. Fresh clones are not affected.
+
+### Troubleshooting
+- **Elasticsearch exits with `vm.max_map_count` too low** (Docker Desktop on Windows): `wsl -d docker-desktop sysctl -w vm.max_map_count=262144`, then `docker compose up -d` again.
+- **Web UI answers `502 Bad Gateway`** after only `paperless-rest` was recreated: nginx still points to the old container address. Run `docker compose restart paperless-webui`.
+- **`docker compose build` stops with `additional privileges requested`** (some Docker Compose versions on Windows): `$env:BUILDX_BAKE_ENTITLEMENTS_FS=0; docker compose build` (PowerShell) or `BUILDX_BAKE_ENTITLEMENTS_FS=0 docker compose build` (bash).
+- **A document stays `PROCESSING`**: usually the OCR job failed after all retries and is in `paperless.ocr.dlq` (RabbitMQ Management UI), see `docker compose logs paperless-ocr-worker`. If the worker logged `OCR result sent ... status=COMPLETED`, the REST server could not store the result (for example PostgreSQL was down) and the event is in `paperless.ocr.result.dlq`. Once the cause is fixed, move it back with the RabbitMQ Management UI (Queues and Streams, `paperless.ocr.result.dlq`, Get messages, then publish the payload again to `paperless.document.exchange` with routing key `document.ocr.result`). The document can also be rejected in the web UI.
 
 ### Step 4: Stop Services
 ```bash
@@ -104,8 +119,10 @@ cd paperless-rest
 ./gradlew check         # additionally fails if line coverage is below 70%
 
 cd ../paperless-ocr-worker
-./gradlew test
+./gradlew check         # tests + JaCoCo, also fails below 70% line coverage
 ```
+
+`TesseractOcrEngineTest` runs a real OCR on `HelloWorld.pdf`. It is skipped when `gs` or Tesseract is not installed (for example on Windows) and runs in CI, where both are installed.
 
 The same checks run automatically in GitHub Actions on every push to `main` and the sprint branches and on every pull request to `main`.
 
@@ -115,6 +132,7 @@ The same checks run automatically in GitHub Actions on every push to `main` and 
 
 - **OpenAPI 3.0 Specification**: Located at `docs/openapi.yaml`.
 - **Architecture & Design Decisions**: Located at `docs/architecture.md`.
+- **Test scripts** (`tests/`): `document-upload-tests.http` / `.ps1` (upload, search, update), `custom-usecase-tests.http` (status and history), `sprint3-queue-check.ps1` (upload reaches the worker).
 
 ---
 
@@ -130,4 +148,4 @@ Every document has a status. A change is only accepted along these transitions, 
 | `COMPLETED` | none (final) |
 | `REJECTED` | none (final) |
 
-The backend accepts all 7 transitions above. The web UI currently offers 4 of them (`RECEIVED` to `PROCESSING`, `PROCESSING` to `REVIEW_PENDING`, `REVIEW_PENDING` to `COMPLETED` or `REJECTED`), which is the happy path described in `docs/custom-usecase-concept.md`. Every change is stored in the status history with an optional comment (no comment is stored as `null`).
+The first two steps happen automatically: when the OCR worker starts a job the document moves to `PROCESSING`, when the text is recognized and indexed it moves to `REVIEW_PENDING`. A user then completes or rejects it in the web UI, which offers all 7 transitions above. Every change is stored in the status history with an optional comment (no comment is stored as `null`).

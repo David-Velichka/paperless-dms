@@ -9,4 +9,7 @@ import java.util.List;
 @Repository
 public interface DocumentRepository extends JpaRepository<DocumentEntity, Long> {
     List<DocumentEntity> findByTitleContainingIgnoreCase(String title);
+
+    // Newest upload first, the id keeps the order stable when two uploads have the same time
+    List<DocumentEntity> findAllByOrderByCreatedAtDescIdDesc();
 }
