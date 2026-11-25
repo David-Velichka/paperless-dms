@@ -39,7 +39,9 @@ public class DocumentServiceImpl implements DocumentService {
     private final DocumentStorage documentStorage;
     private final DocumentSearchIndex documentSearchIndex;
 
+    // One transaction: a new document is only saved together with its first history entry
     @Override
+    @Transactional
     public DocumentModel save(DocumentModel documentModel) {
         if (documentModel == null) {
             throw new BusinessLayerException("Document model must not be null");
