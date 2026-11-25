@@ -27,6 +27,9 @@ services:
     ports:
       - "5672:5672"
       - "15672:15672"
+    networks:
+      - default
+      - ocr-internal
     volumes:
       - rabbitmq_data:/var/lib/rabbitmq
     healthcheck:
@@ -47,6 +50,9 @@ services:
     ports:
       - "9000:9000"
       - "9090:9090"
+    networks:
+      - default
+      - ocr-internal
     volumes:
       - rustfs_data:/data
     healthcheck:
@@ -65,6 +71,9 @@ services:
       ES_JAVA_OPTS: -Xms512m -Xmx512m
     ports:
       - "9200:9200"
+    networks:
+      - default
+      - ocr-internal
     volumes:
       - elasticsearch_data:/usr/share/elasticsearch/data
     healthcheck:
@@ -120,6 +129,13 @@ services:
       dockerfile: Dockerfile
     container_name: paperless-ocr-worker
     restart: unless-stopped
+    # Ghostscript parses untrusted PDFs, so the worker gets no internet access and no extra privileges
+    networks:
+      - ocr-internal
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
     environment:
       SPRING_RABBITMQ_HOST: rabbitmq
       SPRING_RABBITMQ_USERNAME: ${RABBITMQ_DEFAULT_USER}
@@ -146,6 +162,12 @@ services:
       - "80:80"
     depends_on:
       - paperless-rest
+
+networks:
+  default:
+  # No gateway: containers only on this network cannot reach the internet or the host
+  ocr-internal:
+    internal: true
 
 volumes:
   postgres_data:
